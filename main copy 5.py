@@ -1,0 +1,495 @@
+import pygame
+pygame.init()
+import os
+import json
+from math import cos,sin,sqrt
+from time import time
+
+start = time()
+
+tile_size = 150
+
+window = pygame.display.set_mode((1200,800))
+title = pygame.display.set_caption("LogIn Screen")
+base_font = pygame.font.Font(None,56)
+title_font = pygame.font.Font(None,120)
+background = pygame.image.load("Textures/Backgrounds/LogIn.png")
+background = pygame.transform.smoothscale(background, (1200, 800))
+field_pic = pygame.image.load("Textures/Buttons/text_field.png")
+yes_box = pygame.image.load("Textures/Buttons/green_tick.png")
+no_box = pygame.image.load("Textures/Buttons/red_cross.png")
+okay_box = pygame.image.load("Textures/Buttons/blue_tick.png")
+wall_sprite = pygame.image.load("Textures/Tiles/tiling_wall.png")
+wall_sprite = pygame.transform.smoothscale(wall_sprite, (tile_size, tile_size))
+
+
+class BaseWindow: # Base class used for all window screens in the program
+    # Variable that stores which scene/window the program should switch to next
+    transition_to = None
+    #basic class constructor, each class will have its own needed  list of variables
+    def __init__(self):
+        pass
+    #method in which all of the visual aspects will be written
+    def board(self,surface):
+        pass
+    #any kind of events like mouse click or key press will be dealt with in this method
+
+
+
+
+    def event_enter(self, event):
+        pass
+
+class Message: #Logic for the pop up messages
+    def __init__(self,coords:pygame.Rect,button_param,text,is_choice,padding,font_size):
+        #sizes of buttons are created in here. They must be the same to not confuse the user
+        button_height = button_param[1]
+        button_width = button_param[0]
+        self.button_1_param = pygame.Rect(0,0,button_width,button_height)
+        self.button_2_param = pygame.Rect(0,0,button_width,button_height)
+        #the parametres for the textbox itself and
+        self.text = text
+        self.coords = coords
+        self.is_choice = is_choice
+        self.padding = padding
+        self.font = pygame.font.Font(None,font_size)
+        #these variables are support variables used to calculate symbol separation
+        self.text_height = self.font.get_height()
+        height = self.text_height
+        words = text.split()
+        text_message = ""
+        text_width = 0
+       
+        for index in range(0,len(words)):
+            #Here, the separation symbol is placed so the text fits into a predifined box
+            word = words[index]
+            if text_width + self.calc_width(word)+self.padding*2 < coords.width:
+                #Checks if the added word will fit in line and adds a word to the list
+                text_message+= word+" "
+                text_width += self.calc_width(" " + word)
+            else:
+                text_message+="," +word
+                text_width = self.calc_width(word)
+                height += self.font.get_height()+self.padding
+
+
+
+
+
+
+
+
+        if padding*2+text_width+button_width*2+40<coords.width:
+            #button coordinates instantiation if there is enough space left for both of them
+            self.button_1_param.y = height+self.coords.y
+            self.button_1_param.x = self.padding*2+text_width+self.coords.x
+            self.button_2_param.y = self.button_1_param.y
+            self.button_2_param.x = self.coords.x+self.coords.width-self.padding-button_width
+        else:                                                
+            #button coordinates instantiation if there is not enough space
+            self.button_1_param.y = height+self.padding+self.text_height+self.coords.y
+            self.button_1_param.x = self.padding*3+self.coords.x
+            self.button_2_param.y = self.button_1_param.y
+            self.button_2_param.x = self.coords.x+self.coords.width-self.padding*3-button_width
+       
+        self.coords.height = height+self.text_height+self.button_1_param.height+self.padding*2
+        self.text = text_message
+        print(self.text)
+    def calc_width(self, text):
+        #method used to calculate the width of instantiated text
+        return self.font.render(text,True,(100,100,100)).get_width()
+   
+
+
+
+
+    def board(self, surface):
+        #textbox is created with borderlines
+        pygame.draw.rect(surface, (255,255,255), self.coords)
+        pygame.draw.rect(surface, (0,0,0), self.coords, 2)
+        #text is splitted by the separation symbol into lines and drawn one under another
+        #text is able to fit within the text box
+
+
+        y_coordinate = self.coords.y+self.padding
+        for line in self.text.rsplit(","):
+            surface.blit(self.font.render(line,True,(100,100,100)),(self.coords.x+self.padding,y_coordinate))
+            y_coordinate += self.text_height+self.padding
+        #checks what type of box is created and what lines are shown (unifinished)
+        if self.is_choice == True:
+            surface.blit(pygame.transform.smoothscale(yes_box, (self.button_1_param.width, self.button_1_param.height)), (self.button_1_param.x,self.button_1_param.y))
+            surface.blit(pygame.transform.smoothscale(no_box, (self.button_2_param.width, self.button_2_param.height)), (self.button_2_param.x,self.button_2_param.y))
+        elif self.is_choice == False:
+            surface.blit(pygame.transform.smoothscale(okay_box, (self.button_1_param.width, self.button_1_param.height)), (self.button_1_param.x,self.button_1_param.y))
+           
+
+
+
+
+    def event_enter(self, event):
+        #method that checks what button is pressed and returns a corresponding result
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            pos = pygame.mouse.get_pos()
+            if self.is_choice:
+                if self.button_1_param.collidepoint(pos):
+                    print("Yes")
+                    return "yes"
+                elif self.button_2_param.collidepoint(pos):
+                    print("No")
+                    return "no"
+            else:
+                if self.button_1_param.collidepoint(pos):
+                    print("Okay")
+                    return "ok"
+            return None
+                   
+class LogInWindow(BaseWindow):
+    def __init__(self):
+        self.user_response = None
+        #messages that will be displayed in this window are declared here
+        self.messages = {"incorrect_password_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username already exists. Password to this account is incorrect",True,10,45),
+                         "login_proceed_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username already exists. Do you want to proceed with logging in you can access the account now",True,10,45),#
+                         "non_existant_username_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username doesn't exist. Do you want to create new account?",True,10,45)}
+        self.active_message = "login_proceed_message"
+        #background is adjusted to this particular window
+        background = pygame.image.load("Textures/Backgrounds/LogIn.png")
+        self.background = pygame.transform.smoothscale(background, (1200, 800))
+    def board(self,surface):
+        #default
+        surface.blit(self.background, (0, 0))
+        title = title_font.render("Log In",True,(255,255,255))
+        surface.blit(title, (450, 60))
+        #text_fields from the list are added on the screen
+        for t in textfield_list:
+            t.board(window)
+            #if there is a message activated by user, it is being displayed
+        if self.active_message:
+            print("one is active right now")
+            self.messages[self.active_message].board(surface)
+    def event_enter(self, event):
+        #system checks if any buttons in the
+        if self.active_message:
+            result = self.messages[self.active_message].event_enter(event)
+            if result in ("yes", "no", "ok"):
+                print("User clicked:"+result+" on"+self.active_message+"")
+                self.active_message = None  
+            return  
+        #events are inputed into the text fields area
+        for t in textfield_list:
+            t.event_enter(event)
+        if event.type == pygame.KEYDOWN:
+            #if return is pressed a series of checks is made before (unifinished)
+            if event.key == pygame.K_RETURN:
+                initial_user_data = {
+                    "Password":password_field.user_text,
+                    "Username":username_field.user_text
+                }
+                filename = "game_saves/"+initial_user_data["Username"]+".json"
+                if not os.path.exists(filename):
+                    self.active_message = "non_existant_username_message"
+                    self.transition_to = 1
+                    with open(filename, "w") as file:
+                        json.dump(initial_user_data,file,indent = 4)
+                        file.close()
+                if os.path.exists(filename):
+                    with open(filename, "r") as file:
+                        user_data = json.load(file)
+                        self.transition_to = 1
+
+class TextArea:
+
+
+
+
+    def __init__(self,field_type,coords:pygame.Rect,preview="",pixel_offset = 0):
+        self.field_type = field_type #helps to determine if text won't be shown to the user
+        self.preview = preview #what the user will see before clicking on the field
+        self.user_text = ''
+        self.coords = coords
+        self.pixel_offset = pixel_offset
+        self.active = False #If the field is selected
+        self.highlight_colour = (255,255,255)
+
+
+
+
+    def board(self,surface):
+        surface.blit(pygame.transform.smoothscale(field_pic, (self.coords.width, self.coords.height)), (self.coords.x,self.coords.y))
+        #if the textfield is active, it will be highlighted
+        if self.active:
+            pygame.draw.rect(surface,self.highlight_colour,self.coords,5)
+        #if user hasnt entered anything yet and the field is unselected, it will have the name of field outputted
+        if len(self.user_text)==0 and not self.active:
+            text_surface = base_font.render(self.preview,True,(100,100,100))
+        else:
+            text_surface = base_font.render(self.user_text,True,(255,255,255))
+        text_surface_width = text_surface.get_width()
+        rect_w = self.coords.width
+        #this section allows text to stay within the field as it is being entered
+        if text_surface_width> rect_w:
+            diff = text_surface_width - rect_w
+            height = text_surface.get_height()
+            rect = pygame.Rect(diff, 0, rect_w- self.pixel_offset*2, height)
+            text_surface = text_surface.subsurface(rect)
+        #certain offset is added to the text so it looks more plausible
+        x_coord = self.coords.x+self.pixel_offset
+        y_coord = self.coords.y + (self.coords.height - text_surface.get_height())/2
+        surface.blit(text_surface, (x_coord,y_coord))
+
+
+
+
+    def event_enter(self, event):
+        if event.type == pygame.KEYDOWN and self.active:
+            #this section adds unicode characters to the message as user is typing them
+            if event.key == pygame.K_BACKSPACE:
+                self.user_text = self.user_text[:-1]
+            elif event.key != pygame.K_RETURN:
+                self.user_text+=event.unicode
+        #allows field to get selected and unselected
+        if event.type == pygame.MOUSEBUTTONDOWN and pygame.Rect.collidepoint(self.coords,pygame.mouse.get_pos()):
+            self.active = True
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            self.active = False
+
+class MainMenuWindow(BaseWindow):
+    def __init__(self):
+        #buttons are declared and stored in a list
+        self.button_list = [
+            TranstionButton("levels",pygame.Rect(400,225,400,150),2),
+            TranstionButton("leaderboard",pygame.Rect(400,425,400,150),3),
+            TranstionButton("save_files",pygame.Rect(400,600,425,150),4)
+        ]
+    def board(self,surface):
+        surface.blit(background, (0, 0))
+        #each button from the list is drawn on the screen
+        for button in self.button_list:
+            button.board(surface)
+    def event_enter(self, event):
+        #checks if any of the buttons has been pressed by the user
+        for button in self.button_list:
+            result = button.event_enter(event)
+            if result:
+                self.transition_to = result
+                print(f"Transitioning to: {self.transition_to}")
+
+class TranstionButton:
+    def __init__(self,button_pic_name,coords:pygame.Rect, target):
+        #button texture is loaded and scaled to fit the given coordinates
+        self.button_pic = pygame.image.load("Textures/Buttons/"+ button_pic_name +".png")
+        self.button_pic = pygame.transform.smoothscale(self.button_pic, (coords.width, coords.height))
+        #coordinates are stored for click detection
+        self.coords = coords
+        self.target = target
+        pass
+    def board(self,surface:pygame.Surface):
+        #button is drawn at the defined coordinates
+        surface.blit(self.button_pic,(self.coords.x,self.coords.y))
+       
+    def event_enter(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN and pygame.Rect.collidepoint(self.coords,pygame.mouse.get_pos()):
+            return self.target
+        return None
+
+class Levels:
+    def __init__(self):
+        pass
+    def board(self,surface):
+        pass
+    def event_enter(self, event):
+        pass
+
+class Level(BaseWindow):
+    def __init__(self, level_name):
+        # file = open("levels/" + level_name + ".txt", "r")
+
+
+        #player variables
+        self.player_param = 130
+        self.player_speed = 3
+        self.direction = "left"
+        self.sprite_dir = "right"
+        self.character_img = pygame.image.load("Textures/user_icons/hero.png")
+        self.character_img = pygame.transform.smoothscale(self.character_img, (self.player_param, self.player_param))
+        self.coin_num = 0
+        self.hp_num = 3
+        
+
+        self.offset_x = 0
+        self.offset_y = 0
+        self.surface_height = 800
+        self.surface_width = 1200
+
+
+        #player stored as a rectangle
+        self.player_rect = pygame.Rect(self.surface_width/2-self.player_param/2, self.surface_height/2-self.player_param/2, self.player_param, self.player_param)
+        file = open("Textures/levels/" + level_name + ".txt", "r")
+
+
+        wall_list = []
+        self.world_turrets = []
+        self.active_projectiles = []
+        row_num = 0
+       
+        for line in file.readlines():
+            element_num = 0
+            for element in line.strip().split(","):
+                x_pos = element_num *tile_size
+                y_pos = row_num *tile_size
+                if element == "1":
+                    wall_list.append(Wall(x_pos,y_pos,"tiling_wall",tile_size))
+
+                    print(time()-start,"wall added to the list")
+                if element == "3":
+                    self.world_turrets.append(Turret(x_pos,y_pos,"simple_turret",tile_size,50))
+                if element =="2":
+                    self.offset_x = x_pos*tile_size-self.surface_width/2
+                    self.offset_y = y_pos*tile_size-self.surface_height/2
+                element_num += 1
+            row_num += 1
+        self.world_walls = wall_list
+           
+    def board(self,surface):
+       
+        surface.fill((0, 0, 0))
+        pygame.draw.rect(surface, (0, 255, 255), self.player_rect)
+        surface.blit(self.character_img, (self.player_rect.x,self.player_rect.y))
+        self.movement()
+        for obj in self.world_walls:
+            obj.tile_rect.x = obj.world_x - self.offset_x
+            obj.tile_rect.y = obj.world_y - self.offset_y
+            surface.blit(wall_sprite, obj.tile_rect)
+       
+        # for projectile in self.world_projectiles:
+            # projectile.rect.x = projectile.world_x - self.offset_x
+            # projectile.rect.y = projectile.world_y - self.offset_y
+            # surface.blit(projectile.sprite, projectile.rect)
+# 
+# 
+        for turret in self.world_turrets:
+            turret.rect.x = turret.world_x - self.offset_x
+            turret.rect.y = turret.world_y - self.offset_y
+            if self.check_collision(self.player_rect.x):
+                self.shoot()
+
+
+    def event_enter(self, event :pygame.event):
+        pass
+    def movement(self):
+        keys_list = pygame.key.get_pressed()
+        if keys_list[pygame.K_w]:
+            trial_y = self.offset_y - self.player_speed
+            if not self.will_collide(self.offset_x,trial_y):
+                self.offset_y = trial_y
+                self.direction = "up"
+        if keys_list[pygame.K_a]:
+            trial_x = self.offset_x - self.player_speed
+            if not self.will_collide(trial_x,self.offset_y):
+                self.offset_x = trial_x
+                self.direction = "left"
+        if keys_list[pygame.K_s]:
+            trial_y = self.offset_y + self.player_speed
+            if not self.will_collide(self.offset_x,trial_y):
+                self.offset_y = trial_y
+                self.direction = "down"
+        if keys_list[pygame.K_d]:
+            trial_x = self.offset_x + self.player_speed
+            if not self.will_collide(trial_x,self.offset_y):
+                self.offset_x = trial_x
+                self.direction = "right"
+    def will_collide(self,test_offset_x,test_offset_y):
+        for wall in self.world_walls:
+            rect_check = pygame.Rect(wall.world_x-test_offset_x,wall.world_y-test_offset_y,wall.tile_rect.width,wall.tile_rect.height)
+            if rect_check.colliderect(self.player_rect):
+                print("collision detected")
+                return True
+        return False
+
+class Wall:
+    def __init__(self, x, y, sprite,tile_size):
+        tile_size = tile_size
+        self.world_x = x
+        self.world_y = y
+        self.tile_rect = pygame.Rect(self.world_x, self.world_y, tile_size,tile_size)
+
+
+       
+        # The tile_rect starts at the world position, but will be updated to screen position later
+        self.tile_rect = pygame.Rect(self.world_x, self.world_y, tile_size, tile_size)
+
+class Turret:
+    def __init__(self, x, y, sprite,tile_size,ranger):
+        self.x = x
+        self.y = y
+        self.range = ranger
+        self.rect = pygame.Rect(self.x, self.y, tile_size,tile_size)
+        self.sprite = pygame.image.load("Textures/Turrets/"+sprite+".png")
+
+
+    def check_collision(self,player_x,player_y,player_d):
+        player_x = player_x+player_d/2
+        player_y = player_y +player_d/2
+        x1 = self.x+tile_size/2
+        y1 = self.x+tile_size/2
+        x_diff = x1-player_x
+        y_diff = y1-player_y
+        pygame.draw.circle(window,(255,0,0),(x1,y1),self.range,20)
+        if sqrt(x_diff**2+y_diff**2)<=player_d/2+self.range:
+            return True
+        else:
+            return False
+    def shoot():
+       print("shhoting rn")
+class Projectile:
+    def __init__(self, x, y, sprite,tile_size):
+        self.world_x = x
+        self.world_y = y
+        self.rect = pygame.Rect(self.x, self.y, tile_size,tile_size)
+        pass
+#textfield objects are created for username and password input
+password_field = TextArea("Password",pygame.Rect(200,500,800,100),"Password",50)
+username_field = TextArea("Username",pygame.Rect(200,300,800,100),"Username",50)
+textfield_list = [password_field,username_field]
+
+
+
+
+
+
+
+
+LogIn_Screen = LogInWindow()       #login screen with username/password fields and messages
+MainMenu_Screen = MainMenuWindow() #main menu where user chooses what to do next
+Level_1 = Level("level_1")              #placeholder for the first level of the game
+Window_list = [LogIn_Screen,MainMenu_Screen,Level_1]
+
+
+
+
+#this variable defines which scene is currently active (0 = LogIn, 1 = MainMenu, 2 = Level_1, etc.)
+current_scene = 2
+
+
+
+
+run = True
+while run:
+    scene = Window_list[current_scene]
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT or scene.transition_to==100:
+            run = False
+        scene.event_enter(event)
+    scene.board(window)
+    pygame.display.update()
+    #if the scene's paramtre tranistion_to is something, it transtions to other scene
+    if scene.transition_to is not None:
+        current_scene = scene.transition_to
+        scene.transition_to = None
+pygame.quit()
+
+
+
+
+
+
+
