@@ -34,7 +34,7 @@ turret_bottom = pygame.transform.smoothscale(turret_bottom, (tile_size, tile_siz
 wall_sprite = pygame.image.load("Textures/Tiles/tiling_wall.png")
 wall_sprite = pygame.transform.smoothscale(wall_sprite, (tile_size, tile_size))
 
-coin = pygame.image.load("Textures/Objects/Coins/coin.jpeg")
+coin = pygame.image.load("Textures/Objects/Coins/coin.png")
 coin = pygame.transform.smoothscale(coin, (coin_size, coin_size))
 
 
