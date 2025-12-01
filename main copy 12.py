@@ -37,6 +37,7 @@ wall_sprite = pygame.transform.smoothscale(wall_sprite, (tile_size, tile_size))
 coin = pygame.image.load("Textures/Objects/Coins/coin.jpeg")
 coin = pygame.transform.smoothscale(coin, (coin_size, coin_size))
 
+
 class BaseWindow: # Base class used for all window screens in the program
     # Variable that stores which scene/window the program should switch to next
     transition_to = None
@@ -307,7 +308,6 @@ class Level(BaseWindow):
     def __init__(self, level_name):
         # file = open("levels/" + level_name + ".txt", "r")
 
-
         #player variables
         self.player_param = 150
         self.player_speed = 15
@@ -316,14 +316,14 @@ class Level(BaseWindow):
         self.character_img = pygame.image.load("Textures/user_icons/hero.png")
         self.character_img = pygame.transform.smoothscale(self.character_img, (self.player_param, self.player_param))
         self.coin_num = 0
-        self.hp_num = 3
+        self.hp_num = 5
         
 
         self.offset_x = 0
         self.offset_y = 0
         self.surface_height = 800
         self.surface_width = 1200
-
+        self.player_interface = Player_interface()
 
         #player stored as a rectangle
         self.player_rect = pygame.Rect(self.surface_width/2-self.player_param/2, self.surface_height/2-self.player_param/2, self.player_param, self.player_param)
@@ -360,8 +360,9 @@ class Level(BaseWindow):
            
     def board(self,surface):
         
+        current_time = time()
         surface.fill((0, 0, 0))
-        self.draw_interface(surface)
+        
         surface.blit(self.character_img, (self.player_rect.x,self.player_rect.y))
         self.movement()
         for obj in self.world_walls:
@@ -381,6 +382,7 @@ class Level(BaseWindow):
             surface.blit(projectile, proj.rect)
             proj.space_pos += proj.velocity()
             if proj.check_col(self.player_rect):
+                self.hp_num -=1
                 self.active_projectiles.remove(proj)
 
         for cur_coin in self.coins:
@@ -388,8 +390,9 @@ class Level(BaseWindow):
             cur_coin.rect.topleft = cur_coin.pos - offset
             surface.blit(coin,cur_coin.rect)
             if cur_coin.check_col(self.player_rect):
+                self.coin_num+=1
                 self.coins.remove(cur_coin)
-
+        self.player_interface.draw_interface(surface,self.hp_num,self.coin_num)
     def event_enter(self, event :pygame.event):
         pass #66666666666666666666777777777777777777777777777.44444444444444444411111111111111111111111.66666666666666666666111111111111111111.2222222222222222222222
     def movement(self):
@@ -421,10 +424,6 @@ class Level(BaseWindow):
                 print("collision detected")
                 return True
         return False
-    def draw_interface(self,surface):
-        pass
-
-
 
 class Wall:
     def __init__(self, x, y, tile_size):
@@ -435,6 +434,44 @@ class Wall:
        
         # The tile_rect starts at the world position, but will be updated to screen position later
         self.tile_rect = pygame.Rect(self.world_x, self.world_y, tile_size, tile_size)
+
+class Player_interface:
+    def __init__(self):
+        self.health_bar_width = 500
+        self.coin_icon_size = 30
+        self.coin_bar_width = 150
+        self.icon_font = pygame.font.Font(None,60)
+
+        heart_bar = pygame.image.load("Textures/Interface/heart_bar.png")
+        self.heart_bar_img = pygame.transform.smoothscale(heart_bar, (self.health_bar_width, self.health_bar_width/5))
+        heart_icon = pygame.image.load("Textures/Interface/heart.png")
+        self.heart_icon = pygame.transform.smoothscale(heart_icon, (self.health_bar_width/5.9, self.health_bar_width/8.5))
+        self.health_bar_pos = pygame.Vector2(20,30)
+        self.health_bar_rect = pygame.Rect(self.health_bar_pos,(self.heart_bar_img.get_width(),self.heart_bar_img.get_height()))
+
+        self.coin_icon = pygame.transform.smoothscale(coin, (self.coin_icon_size, self.coin_icon_size))
+        self.coin_bar_pos = pygame.Vector2(900,30)
+        coin_bar = heart_icon = pygame.image.load("Textures/Interface/coin_bar.png")
+        self.coin_bar_icon = pygame.transform.smoothscale(coin_bar, (self.coin_bar_width,self.coin_bar_width/2))
+    
+    def draw_interface(self,surface,hp_num,coin_num):
+        
+        surface.blit(self.heart_bar_img,self.health_bar_rect)
+        for heart in range(0,hp_num):
+            heart_pos = self.health_bar_pos+pygame.Vector2(self.health_bar_width/17,self.health_bar_width/21.3)+pygame.Vector2(self.health_bar_width/5.6,0)*heart
+            heart_rect = pygame.Rect(heart_pos,(self.heart_icon.get_width(),self.heart_icon.get_height()))
+            surface.blit(self.heart_icon,heart_rect)
+        surface.blit(self.coin_bar_icon,pygame.Rect(self.coin_bar_pos,(self.coin_bar_icon.get_width(),self.coin_bar_icon.get_height())))
+        coin_icon_rect = pygame.Rect(self.coin_bar_pos,(self.coin_icon_size,self.coin_icon_size))
+        coin_icon_rect.center = self.coin_bar_pos+pygame.Vector2(self.coin_bar_width/4,self.coin_bar_icon.get_height()/2)
+        surface.blit(self.coin_icon,coin_icon_rect)
+
+        coin_count_text = self.icon_font.render("x "+str(coin_num),True,(255,255,255))
+        coin_count_rect = pygame.Rect(self.coin_bar_pos,(coin_count_text.get_width(),coin_count_text.get_height()))
+        coin_count_rect.center = self.coin_bar_pos+pygame.Vector2(self.coin_bar_icon.get_width()*0.7,self.coin_bar_icon.get_height()/2)
+        surface.blit(coin_count_text,coin_count_rect)
+        
+        
 
 class Turret:
     def __init__(self, x, y, tile_sizer,ranger,angle,bullet_list):
