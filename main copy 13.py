@@ -23,6 +23,9 @@ yes_box = pygame.image.load("Textures/Buttons/green_tick.png")
 no_box = pygame.image.load("Textures/Buttons/red_cross.png")
 okay_box = pygame.image.load("Textures/Buttons/blue_tick.png")
 
+icon = pygame.image.load("Textures/Backgrounds/icon.png")
+pygame.display.set_icon(icon)
+
 wall_sprite = pygame.image.load("Textures/Tiles/tiling_wall.png")
 wall_sprite = pygame.transform.smoothscale(wall_sprite, (tile_size, tile_size))
 projectile = pygame.image.load("Textures/Objects/standart_bullet.png")
@@ -34,7 +37,7 @@ turret_bottom = pygame.transform.smoothscale(turret_bottom, (tile_size, tile_siz
 wall_sprite = pygame.image.load("Textures/Tiles/tiling_wall.png")
 wall_sprite = pygame.transform.smoothscale(wall_sprite, (tile_size, tile_size))
 
-coin = pygame.image.load("Textures/Objects/Coins/coin.jpeg")
+coin = pygame.image.load("Textures/Objects/Coins/coin.png")
 coin = pygame.transform.smoothscale(coin, (coin_size, coin_size))
 
 
@@ -484,8 +487,8 @@ class Turret:
 
         self.current_time = 0
         self.theta = 0
-        self.shoot_delay = 0.05
-        self.shoot_num = 7
+        self.shoot_delay = 0.2
+        self.shoot_num = 30
         self.round_delay = 2
         self.round_delay_temp = self.round_delay
         
@@ -523,7 +526,7 @@ class Turret:
         if pos_dif.length()<=player_d/2+self.shoot_range:
             # print("this player is entering the circle")
             if self.state == "INACTIVE":
-                self.current_time = time()
+                self.current_time = time()-self.round_delay
                 print(self.current_time)
             self.state = "SHOOTING"
             return True
@@ -538,7 +541,7 @@ class Turret:
         if time_var<=cycle_time:
             if time_var>self.round_delay_temp:
                 angle_rad = self.angle*pi/180
-                self.bullet_list.append(Oscilating_Projectile(self.shoot_point,-angle_rad,4))
+                self.bullet_list.append(Oscilating_Projectile(self.shoot_point,-angle_rad,1))
                 print("SHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOTTTTTTTTTTTTTTTTTTTTTTTTTTT")
                 self.round_delay_temp += self.shoot_delay
         else:

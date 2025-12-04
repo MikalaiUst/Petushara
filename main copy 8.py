@@ -24,11 +24,11 @@ okay_box = pygame.image.load("Textures/Buttons/blue_tick.png")
 
 wall_sprite = pygame.image.load("Textures/Tiles/tiling_wall.png")
 wall_sprite = pygame.transform.smoothscale(wall_sprite, (tile_size, tile_size))
-projectile = pygame.image.load("Textures/Traps/standart_bullet.png")
+projectile = pygame.image.load("Textures/Objects/standart_bullet.png")
 projectile = pygame.transform.smoothscale(projectile, (projectile_size, projectile_size))
-turret_top = pygame.image.load("Textures/Traps/Turrets/turret_top.png")
+turret_top = pygame.image.load("Textures/Objects/Turrets/turret_top.png")
 turret_top = pygame.transform.smoothscale(projectile, (tile_size, tile_size/2))
-turret_bottom = pygame.image.load("Textures/Traps/Turrets/turret_bottom.png")
+turret_bottom = pygame.image.load("Textures/Objects/Turrets/turret_bottom.png")
 turret_bottom = pygame.transform.smoothscale(projectile, (tile_size, tile_size))
 
 
