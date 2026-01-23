@@ -24,11 +24,11 @@ okay_box = pygame.image.load("Textures/Buttons/blue_tick.png")
 
 wall_sprite = pygame.image.load("Textures/Tiles/tiling_wall.png")
 wall_sprite = pygame.transform.smoothscale(wall_sprite, (tile_size, tile_size))
-projectile = pygame.image.load("Textures/Traps/standart_bullet.png")
+projectile = pygame.image.load("Textures/Objects/standart_bullet.png")
 projectile = pygame.transform.smoothscale(projectile, (projectile_size, projectile_size))
-turret_top = pygame.image.load("Textures/Traps/Turrets/turret_top.png")
+turret_top = pygame.image.load("Textures/Objects/Turrets/turret_top.png")
 turret_top = pygame.transform.smoothscale(turret_top, (tile_size*1.1, tile_size/2*1.1))
-turret_bottom = pygame.image.load("Textures/Traps/Turrets/turret_bottom.png")
+turret_bottom = pygame.image.load("Textures/Objects/Turrets/turret_bottom.png")
 turret_bottom = pygame.transform.smoothscale(turret_bottom, (tile_size, tile_size))
 
 
@@ -345,7 +345,7 @@ class Level(BaseWindow):
                     self.offset_x = x_pos*tile_size-self.surface_width/2
                     self.offset_y = y_pos*tile_size-self.surface_height/2
                 if element == "4":
-                    self.active_projectiles.append(Projectile(pygame.Vector2(x_pos,y_pos),pi,5))
+                    self.active_projectiles.append(Spiral_Projectile(pygame.Vector2(x_pos,y_pos),pi,2))
                 if element == "5":
                     self.world_turrets.append(Turret(x_pos,y_pos,tile_size,500,180,self.active_projectiles))
                 element_num += 1
@@ -479,8 +479,9 @@ class Turret:
     def shoot(self):
        time_var=time()-self.current_time
        if time_var>self.shoot_delay:
-           self.bullet_list.append(Projectile(self.shoot_point,self.angle,4))
-           print("SHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOTTTTTTTTTTTTTTTTTTTTTTTTTTT")
+           angle_rad = pi*self.angle/180
+           self.bullet_list.append(Projectile(self.shoot_point,angle_rad,4))
+           print("Shoot!")
            self.current_time = time()
     def target():
         pass
@@ -496,7 +497,7 @@ class Projectile:
         pass
     def velocity(self):
         x = self.speed
-        y = self.speed
+        y = 0
         return pygame.Vector2(x,y).rotate_rad(self.angle)
     def check_col(self,player_rect):
         return self.rect.colliderect(player_rect)

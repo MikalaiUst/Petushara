@@ -29,7 +29,7 @@ projectile = pygame.transform.smoothscale(projectile, (projectile_size, projecti
 turret_top = pygame.image.load("Textures/Objects/Turrets/turret_top.png")
 turret_top = pygame.transform.smoothscale(turret_top, (tile_size, tile_size/2))
 turret_bottom = pygame.image.load("Textures/Objects/Turrets/turret_bottom.png")
-turret_bottom = pygame.transform.smoothscale(turret_bottom, (tile_size, tile_size))
+turret_bottom = pygame.transform.smoothscale(turret_bottom , (tile_size, tile_size))
 
 class BaseWindow: # Base class used for all window screens in the program
     # Variable that stores which scene/window the program should switch to next
@@ -338,15 +338,15 @@ class Level(BaseWindow):
                     wall_list.append(Wall(x_pos,y_pos,tile_size))
 
                     # print(time()-start,"wall added to the list")
-                if element == "3":
-                    self.world_turrets.append(Turret(x_pos,y_pos,"simple_turret",tile_size,50))
+                # if element == "3":
+                #     self.world_turrets.append(Turret(x_pos,y_pos,"simple_turret",tile_size,50))
                 if element =="2":
                     self.offset_x = x_pos*tile_size-self.surface_width/2
                     self.offset_y = y_pos*tile_size-self.surface_height/2
                 if element == "4":
                     self.active_projectiles.append(Projectile(x_pos,y_pos,pi,5,pi,projectile_size))
                 if element == "5":
-                    self.world_turrets.append(Turret(x_pos,y_pos,tile_size,100,190))
+                    self.world_turrets.append(Turret(x_pos,y_pos,300,190,self.active_projectiles))
                 element_num += 1
             row_num += 1
         self.world_walls = wall_list
@@ -369,11 +369,16 @@ class Level(BaseWindow):
                 self.active_projectiles.remove(proj)
             
         for turret in self.world_turrets:
+            #offset is turned into a vector
             offset = pygame.Vector2(self.offset_x,self.offset_y)
+            #offset is substracted from the turret's position
             turret.rect.topleft = turret.pos - offset
-            turret.compile_turret(surface)
+            #turret is drawn on the screen
+            turret.compile_turret(surface,offset)
+            #if player enters turret's range, it becomes active and starts shooting
             if turret.check_collision(self.player_rect.x,self.player_rect.y,self.player_param,offset):
                 turret.shoot()
+                
 
 
     def event_enter(self, event :pygame.event):
@@ -421,69 +426,95 @@ class Wall:
         self.tile_rect = pygame.Rect(self.world_x, self.world_y, tile_size, tile_size)
 
 class Turret:
-    def __init__(self, x, y, tile_sizer,ranger,angle):
+    def __init__(self, x, y,ranger,angle, bullet_list):
+        #position and angle are setted
         self.pos = pygame.Vector2(x,y)
-        self.tile_size = tile_sizer
         self.angle = angle
+        #turret's range is determined (name "ranger" is used because "range" is a keyword in python)
         self.range = ranger
 
-        self.theta = 0
-        self.shoot_delay = 0
-        self.shoot_num = 0
-        self.round_delay = 0
+        #Time variables are determined (hard-coded for now)
+        self.shoot_delay = 1
+        self.shoot_num = 5
+        self.round_delay = 5
 
-        self.shoot_vector = pygame.Vector2(tile_size/2,0)
-        self.shoot_point = pygame.Vector2(0,0)
+        #keeps track of the current time, based on the computer's time
+        self.current_time = 0
+        #list, where projectiles are added when shot
+        self.bullet_list = bullet_list
+
+        #Turret hitbox
         self.rect = pygame.Rect(x, y, tile_size,tile_size)
         
-    def compile_turret(self, surface):
+    def compile_turret(self, surface,offset):
+        #Turret base is drawn on the screen
         surface.blit(turret_bottom, self.rect)
 
+        #Turret barrel is rotated at a given angle
         rotated_image = pygame.transform.rotate(turret_top, self.angle)
 
+        #A centre point of the barrel is calculated
         new_rect = rotated_image.get_rect()
         
-        # 2.3 Calculate Center: Find the center point of the turret on the screen
-        turret_center_screen = self.rect.topleft + pygame.Vector2(self.tile_size/1.80,self.tile_size/20)
-        barrel_offset = pygame.Vector2(self.tile_size/2, 0)
-        # 2.4 Preserve the Center: Set the center of the new rect to the screen center
+        #Point is calculated for the barrel
+        turret_center_screen = self.rect.topleft + pygame.Vector2(tile_size/1.80,tile_size/20)
+        barrel_offset = pygame.Vector2(tile_size/2, 0)
+
+        #Since pygame blits the images from topleft, the point is allocated to the center of the image
         new_rect.center = turret_center_screen
-        self.shoot_point=pygame.Vector2(new_rect.centerx,new_rect.centery)+barrel_offset.rotate(-self.angle)
-        
-        
-        # 2.5 Blit (Draw): Draw the rotated image using the new rect
+        #a point from whicht the projectiles will be shot is calculated
+        self.shoot_point=pygame.Vector2(new_rect.centerx,new_rect.centery)+barrel_offset.rotate(-self.angle)+offset
+        #Draws the rotated image using the new rect
         surface.blit(rotated_image, new_rect)
+        #A support line is drawn to visually see the shoot_point
         pygame.draw.line(surface,(255,255,255),new_rect.center,self.shoot_point,3)
 
-        self.theta +=5
 
     def check_collision(self,player_x,player_y,player_d,offset):
+        #player's center is calculated
         player_x = player_x+player_d/2
         player_y = player_y + player_d/2
+
+        #turret's center is calculated
         circle_pos = self.pos+pygame.Vector2(tile_size,tile_size)/2-offset
         pos_dif = circle_pos - pygame.Vector2(player_x,player_y)
-        pygame.draw.circle(window,(255,0,0),circle_pos,self.range,20)
+        
+        #Line from the centre of the turret to the player's centre is drawn
         pygame.draw.line(window,(200,200,200),pygame.Vector2(player_x,player_y),circle_pos,3)
+
         if pos_dif.length()<=player_d/2+self.range:
-            # print("this motherfucker is entering the circle")
+            #If player is withing turret's range, a green circle is drawn and True is returned
+            pygame.draw.circle(window,(0,255,0),circle_pos,self.range,3)
             return True
         else:
+            #If player is withing turret's range, a red circle is drawn and False is returned
+            pygame.draw.circle(window,(255,0,0),circle_pos,self.range,3)
             return False
     def shoot(self):
-       pass
+        #time since the shot is calculated
+       time_var=time()-self.current_time
+       #if time since the last shot exceeds the shoot_delay, shooting logic is called
+       if time_var>self.shoot_delay:
+           #angle is converted from degrees to radians
+           angle_rad = self.angle*pi/180
+           #projectile is added to the list at a correct angle
+           self.bullet_list.append(Projectile(self.shoot_point,-angle_rad,4,pi))
+           print("Shoot!")
+           #current_time variable is updated to current time, which creates a delay
+           self.current_time = time()
 
 class Projectile:
-    def __init__(self, x, y,angle,speed,theta_increase,tile_size):
-        self.space_pos = pygame.Vector2(x,y)
+    def __init__(self, pos,angle,speed,theta_increase):
+        self.space_pos = pos
         self.theta = 0
         self.theta_increase = theta_increase/100
         self.angle = angle
         self.speed = speed
-        self.rect = pygame.Rect(x, y, projectile_size,projectile_size)
+        self.rect = pygame.Rect(pos, (projectile_size,projectile_size))
         pass
     def velocity(self):
         x = self.speed
-        y = self.speed
+        y = 0
         return pygame.Vector2(x,y).rotate_rad(self.angle)
     def check_col(self,player_rect):
         return self.rect.colliderect(player_rect)
@@ -493,7 +524,6 @@ class Oscilating_Projectile(Projectile):
         x = self.speed
         y = sin(self.theta)*self.speed
         self.theta += self.theta_increase
-        print()
         return pygame.Vector2(x,y).rotate_rad(self.angle)
 
 class Rose_Projectile(Projectile):

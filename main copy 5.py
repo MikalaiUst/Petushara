@@ -7,7 +7,9 @@ from time import time
 
 start = time()
 
-tile_size = 150
+tile_size = 100
+player_size = 75
+
 
 window = pygame.display.set_mode((1200,800))
 title = pygame.display.set_caption("LogIn Screen")
@@ -19,8 +21,11 @@ field_pic = pygame.image.load("Textures/Buttons/text_field.png")
 yes_box = pygame.image.load("Textures/Buttons/green_tick.png")
 no_box = pygame.image.load("Textures/Buttons/red_cross.png")
 okay_box = pygame.image.load("Textures/Buttons/blue_tick.png")
+
+
 wall_sprite = pygame.image.load("Textures/Tiles/tiling_wall.png")
 wall_sprite = pygame.transform.smoothscale(wall_sprite, (tile_size, tile_size))
+
 
 
 class BaseWindow: # Base class used for all window screens in the program
@@ -98,9 +103,6 @@ class Message: #Logic for the pop up messages
     def calc_width(self, text):
         #method used to calculate the width of instantiated text
         return self.font.render(text,True,(100,100,100)).get_width()
-   
-
-
 
 
     def board(self, surface):
@@ -305,8 +307,8 @@ class Level(BaseWindow):
 
 
         #player variables
-        self.player_param = 130
-        self.player_speed = 3
+        self.player_param = player_size
+        self.player_speed = 1
         self.direction = "left"
         self.sprite_dir = "right"
         self.character_img = pygame.image.load("Textures/user_icons/hero.png")
@@ -317,60 +319,55 @@ class Level(BaseWindow):
 
         self.offset_x = 0
         self.offset_y = 0
-        self.surface_height = 800
-        self.surface_width = 1200
+        self.surface_height = window.get_height()
+        self.surface_width = window.get_width()
 
 
         #player stored as a rectangle
         self.player_rect = pygame.Rect(self.surface_width/2-self.player_param/2, self.surface_height/2-self.player_param/2, self.player_param, self.player_param)
         file = open("Textures/levels/" + level_name + ".txt", "r")
 
-
-        wall_list = []
+        #The lists to hold different types of objects from the tilemap are created
+        self.world_walls = []
         self.world_turrets = []
         self.active_projectiles = []
+
+        #This part loops through the detected file, extracting its tile map
         row_num = 0
-       
         for line in file.readlines():
             element_num = 0
             for element in line.strip().split(","):
+                #object's x and y coordinates are calculated
                 x_pos = element_num *tile_size
                 y_pos = row_num *tile_size
+                #System checs which element is it detecting at the moment
                 if element == "1":
-                    wall_list.append(Wall(x_pos,y_pos,"tiling_wall",tile_size))
-
-                    print(time()-start,"wall added to the list")
+                    #if element is "1", then a wall is spawned
+                    self.world_walls.append(Wall(x_pos,y_pos,"tiling_wall",tile_size))
                 if element == "3":
-                    self.world_turrets.append(Turret(x_pos,y_pos,"simple_turret",tile_size,50))
-                if element =="2":
-                    self.offset_x = x_pos*tile_size-self.surface_width/2
-                    self.offset_y = y_pos*tile_size-self.surface_height/2
+                    #if element is "2", then a projectile is spawned
+                    self.active_projectiles.append(Projectile(x_pos,y_pos,0,5))
                 element_num += 1
             row_num += 1
-        self.world_walls = wall_list
            
     def board(self,surface):
-       
+        #Background is made black, to simulate outer space
         surface.fill((0, 0, 0))
-        pygame.draw.rect(surface, (0, 255, 255), self.player_rect)
-        surface.blit(self.character_img, (self.player_rect.x,self.player_rect.y))
+        
+        #the movement algorithm is ran
         self.movement()
+        
+        #A special collision sprite is created to detect player's collision rectangle
+        pygame.draw.rect(surface, (0, 255, 255), self.player_rect)
+        #Player's sprite is added to the centre of screen
+        surface.blit(self.character_img, (self.player_rect.x,self.player_rect.y))
         for obj in self.world_walls:
+            #Offset is substracted from the object's actual coordinates
             obj.tile_rect.x = obj.world_x - self.offset_x
             obj.tile_rect.y = obj.world_y - self.offset_y
+            #Wall sprite is drawn on the screen
             surface.blit(wall_sprite, obj.tile_rect)
-       
-        # for projectile in self.world_projectiles:
-            # projectile.rect.x = projectile.world_x - self.offset_x
-            # projectile.rect.y = projectile.world_y - self.offset_y
-            # surface.blit(projectile.sprite, projectile.rect)
-# 
-# 
-        for turret in self.world_turrets:
-            turret.rect.x = turret.world_x - self.offset_x
-            turret.rect.y = turret.world_y - self.offset_y
-            if self.check_collision(self.player_rect.x):
-                self.shoot()
+        
 
 
     def event_enter(self, event :pygame.event):
@@ -407,55 +404,18 @@ class Level(BaseWindow):
 
 class Wall:
     def __init__(self, x, y, sprite,tile_size):
-        tile_size = tile_size
         self.world_x = x
         self.world_y = y
         self.tile_rect = pygame.Rect(self.world_x, self.world_y, tile_size,tile_size)
-
-
-       
+        #Wall sprite is read from the file and added as a parametre
+        
         # The tile_rect starts at the world position, but will be updated to screen position later
         self.tile_rect = pygame.Rect(self.world_x, self.world_y, tile_size, tile_size)
 
-class Turret:
-    def __init__(self, x, y, sprite,tile_size,ranger):
-        self.x = x
-        self.y = y
-        self.range = ranger
-        self.rect = pygame.Rect(self.x, self.y, tile_size,tile_size)
-        self.sprite = pygame.image.load("Textures/Turrets/"+sprite+".png")
-
-
-    def check_collision(self,player_x,player_y,player_d):
-        player_x = player_x+player_d/2
-        player_y = player_y +player_d/2
-        x1 = self.x+tile_size/2
-        y1 = self.x+tile_size/2
-        x_diff = x1-player_x
-        y_diff = y1-player_y
-        pygame.draw.circle(window,(255,0,0),(x1,y1),self.range,20)
-        if sqrt(x_diff**2+y_diff**2)<=player_d/2+self.range:
-            return True
-        else:
-            return False
-    def shoot():
-       print("shhoting rn")
-class Projectile:
-    def __init__(self, x, y, sprite,tile_size):
-        self.world_x = x
-        self.world_y = y
-        self.rect = pygame.Rect(self.x, self.y, tile_size,tile_size)
-        pass
 #textfield objects are created for username and password input
 password_field = TextArea("Password",pygame.Rect(200,500,800,100),"Password",50)
 username_field = TextArea("Username",pygame.Rect(200,300,800,100),"Username",50)
 textfield_list = [password_field,username_field]
-
-
-
-
-
-
 
 
 LogIn_Screen = LogInWindow()       #login screen with username/password fields and messages
@@ -463,23 +423,23 @@ MainMenu_Screen = MainMenuWindow() #main menu where user chooses what to do next
 Level_1 = Level("level_1")              #placeholder for the first level of the game
 Window_list = [LogIn_Screen,MainMenu_Screen,Level_1]
 
-
-
-
 #this variable defines which scene is currently active (0 = LogIn, 1 = MainMenu, 2 = Level_1, etc.)
 current_scene = 2
 
-
-
-
 run = True
 while run:
+    # The current scene from the list is obtained
     scene = Window_list[current_scene]
+    
+    #checks if user is inputing any data, like key clicks or mouse clicks
     for event in pygame.event.get():
-        if event.type == pygame.QUIT or scene.transition_to==100:
+        #If the user closes window, the game stops
+        if event.type == pygame.QUIT:
             run = False
         scene.event_enter(event)
+    #displays the current scene
     scene.board(window)
+    #Importnat pygame function, allows new frame to be drawn
     pygame.display.update()
     #if the scene's paramtre tranistion_to is something, it transtions to other scene
     if scene.transition_to is not None:

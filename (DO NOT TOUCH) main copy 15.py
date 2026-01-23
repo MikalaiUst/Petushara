@@ -2,7 +2,7 @@ import pygame
 pygame.init()
 import os
 import json
-from math import cos,sin,sqrt,pi
+from math import cos,sin,sqrt,pi,e
 from time import time
 
 start = time()
@@ -30,10 +30,13 @@ wall_sprite = pygame.image.load("Textures/Tiles/tiling_wall.png")
 wall_sprite = pygame.transform.smoothscale(wall_sprite, (tile_size, tile_size))
 projectile = pygame.image.load("Textures/Objects/standart_bullet.png")
 projectile = pygame.transform.smoothscale(projectile, (projectile_size, projectile_size))
+
 turret_top = pygame.image.load("Textures/Objects/Turrets/turret_top.png")
 turret_top = pygame.transform.smoothscale(turret_top, (tile_size*1.1, tile_size/2*1.1))
 turret_bottom = pygame.image.load("Textures/Objects/Turrets/turret_bottom.png")
 turret_bottom = pygame.transform.smoothscale(turret_bottom, (tile_size, tile_size))
+multi_dir_turret = pygame.image.load("Textures/Objects/Turrets/multi_dir_turret.png")
+multi_dir_turret = pygame.transform.smoothscale(multi_dir_turret, (tile_size, tile_size))
 wall_sprite = pygame.image.load("Textures/Tiles/tiling_wall.png")
 wall_sprite = pygame.transform.smoothscale(wall_sprite, (tile_size, tile_size))
 
@@ -347,15 +350,17 @@ class Level(BaseWindow):
                     wall_list.append(Wall(x_pos,y_pos,tile_size))
 
                     # print(time()-start,"wall added to the list")
-                if element == "3":
-                    self.world_turrets.append(Turret(x_pos,y_pos,"simple_turret",tile_size,50))
                 if element =="2":
                     self.offset_x = x_pos*tile_size-self.surface_width/2
                     self.offset_y = y_pos*tile_size-self.surface_height/2
-                if element == "4":
-                    self.coins.append(Coins(x_pos,y_pos))
+                if element == "3":
+                    self.active_projectiles.append(RDamped_Projectile(pygame.Vector2(x_pos,y_pos),0,5))
                 if element == "5":
                     self.world_turrets.append(Turret(x_pos,y_pos,tile_size,500,45,self.active_projectiles))
+                if element == "6":
+                    self.world_turrets.append(Multi_Dir_Turret(x_pos,y_pos,tile_size,500,45,self.active_projectiles))
+                if element == "7":
+                    self.active_projectiles.append(Rose_Projectile(pygame.Vector2(x_pos,y_pos),0,10))
                 element_num += 1
             row_num += 1
         self.world_walls = wall_list
@@ -387,33 +392,41 @@ class Level(BaseWindow):
                 self.hp_num -=1
                 self.active_projectiles.remove(proj)
 
-        for cur_coin in self.coins:
-            offset = pygame.Vector2(self.offset_x,self.offset_y)
-            cur_coin.rect.topleft = cur_coin.pos - offset
-            surface.blit(coin,cur_coin.rect)
-            if cur_coin.check_col(self.player_rect):
-                self.coin_num+=1
-                self.coins.remove(cur_coin)
+        # for cur_coin in self.coins:
+        #     offset = pygame.Vector2(self.offset_x,self.offset_y)
+        #     cur_coin.rect.topleft = cur_coin.pos - offset
+        #     surface.blit(coin,cur_coin.rect)
+        #     if cur_coin.check_col(self.player_rect):
+        #         self.coin_num+=1
+        #         self.coins.remove(cur_coin)
         self.player_interface.draw_interface(surface,self.hp_num,self.coin_num)
     def event_enter(self, event :pygame.event):
         pass #66666666666666666666777777777777777777777777777.44444444444444444411111111111111111111111.66666666666666666666111111111111111111.2222222222222222222222
     def movement(self):
+        #the keys that the player is ppressing are recorded
         keys_list = pygame.key.get_pressed()
+        # Check whether the player is trying to up left by pressing the "W" key
         if keys_list[pygame.K_w]:
+            #The program calculates the where the player will be ahead 
             trial_y = self.offset_y - self.player_speed
+            #The algorithm then checks if the player's sprite collides with any of the walls in the list
             if not self.will_collide(self.offset_x,trial_y):
+                # if it doesnt, player moves vertically upwards
                 self.offset_y = trial_y
                 self.direction = "up"
+        # Check whether the player is trying to move left by pressing the "A" key
         if keys_list[pygame.K_a]:
             trial_x = self.offset_x - self.player_speed
             if not self.will_collide(trial_x,self.offset_y):
                 self.offset_x = trial_x
                 self.direction = "left"
+        # Check whether the player is trying to move down by pressing the "S" key
         if keys_list[pygame.K_s]:
             trial_y = self.offset_y + self.player_speed
             if not self.will_collide(self.offset_x,trial_y):
                 self.offset_y = trial_y
                 self.direction = "down"
+        # Check whether the player is trying to move right by pressing the "D" key
         if keys_list[pygame.K_d]:
             trial_x = self.offset_x + self.player_speed
             if not self.will_collide(trial_x,self.offset_y):
@@ -452,7 +465,7 @@ class Player_interface:
         self.health_bar_rect = pygame.Rect(self.health_bar_pos,(self.heart_bar_img.get_width(),self.heart_bar_img.get_height()))
 
         self.coin_icon = pygame.transform.smoothscale(coin, (self.coin_icon_size, self.coin_icon_size))
-        self.coin_bar_pos = pygame.Vector2(900,30)
+        self.coin_bar_pos = pygame.Vector2(20,150)
         coin_bar = heart_icon = pygame.image.load("Textures/Interface/coin_bar.png")
         self.coin_bar_icon = pygame.transform.smoothscale(coin_bar, (self.coin_bar_width,self.coin_bar_width/2))
     
@@ -463,6 +476,7 @@ class Player_interface:
             heart_pos = self.health_bar_pos+pygame.Vector2(self.health_bar_width/17,self.health_bar_width/21.3)+pygame.Vector2(self.health_bar_width/5.6,0)*heart
             heart_rect = pygame.Rect(heart_pos,(self.heart_icon.get_width(),self.heart_icon.get_height()))
             surface.blit(self.heart_icon,heart_rect)
+        
         surface.blit(self.coin_bar_icon,pygame.Rect(self.coin_bar_pos,(self.coin_bar_icon.get_width(),self.coin_bar_icon.get_height())))
         coin_icon_rect = pygame.Rect(self.coin_bar_pos,(self.coin_icon_size,self.coin_icon_size))
         coin_icon_rect.center = self.coin_bar_pos+pygame.Vector2(self.coin_bar_width/4,self.coin_bar_icon.get_height()/2)
@@ -487,11 +501,11 @@ class Turret:
         self.current_time = 0
         self.theta = 0
         self.shoot_delay = 0.1
-        self.shoot_num = 20
-        self.round_delay = 2
+        self.shoot_num = 40
+        self.round_delay = 15
         self.round_delay_temp = self.round_delay
         
-        self.shoot_point = pygame.Vector2(0,0)
+        self.barrel_midpoint = pygame.Vector2(0,0)
         self.rect = pygame.Rect(x, y, tile_size,tile_size)
         
     def compile_turret(self, surface,offset):
@@ -502,14 +516,13 @@ class Turret:
         new_rect = rotated_image.get_rect()
         
         turret_center_screen = self.rect.topleft + pygame.Vector2(self.tile_size/1.80,self.tile_size/20)
-        barrel_offset = pygame.Vector2(self.tile_size/2, 0)
 
         new_rect.center = turret_center_screen
-        self.shoot_point=pygame.Vector2(new_rect.centerx,new_rect.centery)+barrel_offset.rotate(-self.angle)+offset
+        self.barrel_midpoint=pygame.Vector2(new_rect.centerx,new_rect.centery)+offset
         
         
         surface.blit(rotated_image, new_rect)
-        # pygame.draw.line(surface,(255,255,255),new_rect.center,self.shoot_point,3)
+        # pygame.draw.line(surface,(255,255,255),new_rect.center,self.barrel_midpoint,3)
 
         self.theta +=5
 
@@ -538,7 +551,9 @@ class Turret:
         if time_var<=cycle_time:
             if time_var>self.round_delay_temp:
                 angle_rad = self.angle*pi/180
-                self.bullet_list.append(Rose_Projectile(self.shoot_point,-angle_rad,5))
+                barrel_offset = pygame.Vector2(self.tile_size/2, 0)
+                self.barrel_midpoint+=barrel_offset.rotate(-self.angle)
+                self.bullet_list.append(Rose_Projectile(self.barrel_midpoint,-angle_rad,5))
                 print("SHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOTTTTTTTTTTTTTTTTTTTTTTTTTTT")
                 self.round_delay_temp += self.shoot_delay
         else:
@@ -548,6 +563,34 @@ class Turret:
         print("Temp:",self.round_delay_temp)
     def target():
         pass
+class Multi_Dir_Turret(Turret):
+    def compile_turret(self, surface,offset):
+        surface.blit(multi_dir_turret, self.rect)
+        self.barrel_midpoint=self.rect.center+offset
+        
+    def shoot(self):
+        cycle_time = self.round_delay+self.shoot_delay*self.shoot_num
+        time_var=time()-self.current_time
+
+        if time_var<=cycle_time:
+            if time_var>self.round_delay_temp:
+                # angle_rad = self.angle*pi/180
+                # barrel_offset = pygame.Vector2(self.tile_size/2, 0)
+                # self.barrel_midpoint+=barrel_offset.rotate(-self.angle)
+                # self.bullet_list.append(Oscilating_Projectile(self.barrel_midpoint,-angle_rad,5))
+                directions = 8
+                for i in range(0,directions):
+                    angle_rad = 2*pi/directions*i
+                    barrel_offset = pygame.Vector2(self.tile_size/2, 0)*0.8
+                    shoot_point = self.barrel_midpoint+barrel_offset.rotate_rad(angle_rad)
+                    self.bullet_list.append(Oscilating_Projectile(shoot_point,angle_rad,5))
+                print("SHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOTTTTTTTTTTTTTTTTTTTTTTTTTTT")
+                self.round_delay_temp += self.shoot_delay
+        else:
+            self.current_time = time()
+            self.round_delay_temp = self.round_delay
+        print("Constant:",self.round_delay)
+        print("Temp:",self.round_delay_temp)
 
 class Projectile:
     def __init__(self, center_pos, angle, speed):
@@ -555,7 +598,7 @@ class Projectile:
         self.angle = angle
         self.speed = speed
         self.theta = 0
-        self.theta_increase = 1/50
+        self.theta_increase = 1/100
         self.rect = pygame.Rect(0, 0, projectile_size, projectile_size)
         self.rect.center = self.space_pos
     def velocity(self):
@@ -586,6 +629,13 @@ class Spiral_Projectile(Projectile):
         x = r*cos(self.theta)
         y = r*sin(self.theta)
         self.theta += pi*self.theta_increase
+        return pygame.Vector2(x,y)
+
+class RDamped_Projectile(Projectile):
+    def velocity(self):
+        x = self.speed
+        y = (3*cos(self.theta)+0.5*sin(self.theta))*(e**(self.theta_increase))
+        self.theta+=pi*self.theta_increase
         return pygame.Vector2(x,y)
 
 class Coins:

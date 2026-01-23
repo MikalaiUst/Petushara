@@ -19,6 +19,7 @@ field_pic = pygame.image.load("Textures/Buttons/text_field.png")
 yes_box = pygame.image.load("Textures/Buttons/green_tick.png")
 no_box = pygame.image.load("Textures/Buttons/red_cross.png")
 okay_box = pygame.image.load("Textures/Buttons/blue_tick.png")
+
 wall_sprite = pygame.image.load("Textures/Tiles/tiling_wall.png")
 wall_sprite = pygame.transform.smoothscale(wall_sprite, (tile_size, tile_size))
 

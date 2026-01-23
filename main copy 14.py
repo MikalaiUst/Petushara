@@ -11,6 +11,7 @@ clock = pygame.time.Clock()
 tile_size = 100
 projectile_size = 20
 coin_size = 50
+pop_up_size = 50
 
 window = pygame.display.set_mode((1200,800))
 title = pygame.display.set_caption("LogIn Screen")
@@ -26,14 +27,18 @@ okay_box = pygame.image.load("Textures/Buttons/blue_tick.png")
 icon = pygame.image.load("Textures/Backgrounds/icon.png")
 pygame.display.set_icon(icon)
 
+
 wall_sprite = pygame.image.load("Textures/Tiles/tiling_wall.png")
 wall_sprite = pygame.transform.smoothscale(wall_sprite, (tile_size, tile_size))
 projectile = pygame.image.load("Textures/Objects/standart_bullet.png")
 projectile = pygame.transform.smoothscale(projectile, (projectile_size, projectile_size))
+
 turret_top = pygame.image.load("Textures/Objects/Turrets/turret_top.png")
 turret_top = pygame.transform.smoothscale(turret_top, (tile_size*1.1, tile_size/2*1.1))
 turret_bottom = pygame.image.load("Textures/Objects/Turrets/turret_bottom.png")
 turret_bottom = pygame.transform.smoothscale(turret_bottom, (tile_size, tile_size))
+multi_dir_turret = pygame.image.load("Textures/Objects/Turrets/multi_dir_turret.png")
+multi_dir_turret = pygame.transform.smoothscale(multi_dir_turret, (tile_size, tile_size))
 wall_sprite = pygame.image.load("Textures/Tiles/tiling_wall.png")
 wall_sprite = pygame.transform.smoothscale(wall_sprite, (tile_size, tile_size))
 
@@ -158,9 +163,9 @@ class LogInWindow(BaseWindow):
         self.user_response = None
         #messages that will be displayed in this window are declared here
         self.messages = {"incorrect_password_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username already exists. Password to this account is incorrect",True,10,45),
-                         "login_proceed_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username already exists. Do you want to proceed with logging in you can access the account now",True,10,45),#
+                         "login_proceed_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username already exists. Do you want to proceed with logging in you can access the account now",True,10,45),
                          "non_existant_username_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username doesn't exist. Do you want to create new account?",True,10,45)}
-        self.active_message = "login_proceed_message"
+        self.active_message = ""
         #background is adjusted to this particular window
         background = pygame.image.load("Textures/Backgrounds/LogIn.png")
         self.background = pygame.transform.smoothscale(background, (1200, 800))
@@ -244,8 +249,6 @@ class TextArea:
         surface.blit(text_surface, (x_coord,y_coord))
 
 
-
-
     def event_enter(self, event):
         if event.type == pygame.KEYDOWN and self.active:
             #this section adds unicode characters to the message as user is typing them
@@ -263,9 +266,9 @@ class MainMenuWindow(BaseWindow):
     def __init__(self):
         #buttons are declared and stored in a list
         self.button_list = [
-            TranstionButton("levels",pygame.Rect(400,225,400,150),2),
-            TranstionButton("leaderboard",pygame.Rect(400,425,400,150),3),
-            TranstionButton("save_files",pygame.Rect(400,600,425,150),4)
+            TranstionButton("Textures/Buttons/levels.png",pygame.Rect(400,225,400,150),2),
+            TranstionButton("Textures/Buttons/leaderboard.png",pygame.Rect(400,425,400,150),3),
+            TranstionButton("Textures/Buttons/save_files.png",pygame.Rect(400,600,425,150),4)
         ]
     def board(self,surface):
         surface.blit(background, (0, 0))
@@ -278,12 +281,11 @@ class MainMenuWindow(BaseWindow):
             result = button.event_enter(event)
             if result:
                 self.transition_to = result
-                print(f"Transitioning to: {self.transition_to}")
 
 class TranstionButton:
     def __init__(self,button_pic_name,coords:pygame.Rect, target):
         #button texture is loaded and scaled to fit the given coordinates
-        self.button_pic = pygame.image.load("Textures/Buttons/"+ button_pic_name +".png")
+        self.button_pic = pygame.image.load(button_pic_name)
         self.button_pic = pygame.transform.smoothscale(self.button_pic, (coords.width, coords.height))
         #coordinates are stored for click detection
         self.coords = coords
@@ -317,14 +319,20 @@ class Level(BaseWindow):
         self.sprite_dir = "right"
         self.character_img = pygame.image.load("Textures/user_icons/hero.png")
         self.character_img = pygame.transform.smoothscale(self.character_img, (self.player_param, self.player_param))
+        #player's attribute counts
         self.coin_num = 0
         self.hp_num = 5
-        
 
+        #pop-up window control variables
+        self.active = True
+
+        #current offset
         self.offset_x = 0
         self.offset_y = 0
+        #screen parametres
         self.surface_height = 800
         self.surface_width = 1200
+        #player's interface
         self.player_interface = Player_interface()
 
         #player stored as a rectangle
@@ -356,6 +364,10 @@ class Level(BaseWindow):
                     self.coins.append(Coins(x_pos,y_pos))
                 if element == "5":
                     self.world_turrets.append(Turret(x_pos,y_pos,tile_size,500,45,self.active_projectiles))
+                if element == "6":
+                    self.world_turrets.append(Multi_Dir_Turret(x_pos,y_pos,tile_size,500,45,self.active_projectiles))
+                if element == "7":
+                    self.active_projectiles.append(Rose_Projectile(pygame.Vector2(x_pos,y_pos),0,10))
                 element_num += 1
             row_num += 1
         self.world_walls = wall_list
@@ -366,7 +378,9 @@ class Level(BaseWindow):
         surface.fill((0, 0, 0))
         
         surface.blit(self.character_img, (self.player_rect.x,self.player_rect.y))
-        self.movement()
+        if self.active == True:
+            self.movement()
+        
         for obj in self.world_walls:
             obj.tile_rect.x = obj.world_x - self.offset_x
             obj.tile_rect.y = obj.world_y - self.offset_y
@@ -377,12 +391,14 @@ class Level(BaseWindow):
             turret.rect.topleft = turret.pos - offset
             turret.compile_turret(surface,offset)
             if turret.check_collision(self.player_rect.x,self.player_rect.y,self.player_param,offset):
-                turret.shoot()
+                if self.active == True:
+                    turret.shoot()
         
         for proj in self.active_projectiles:
             proj.rect.topleft = proj.space_pos - pygame.Vector2(self.offset_x,self.offset_y)
             surface.blit(projectile, proj.rect)
-            proj.space_pos += proj.velocity()
+            if self.active == True:
+                proj.space_pos += proj.velocity()
             if proj.check_col(self.player_rect):
                 self.hp_num -=1
                 self.active_projectiles.remove(proj)
@@ -396,24 +412,36 @@ class Level(BaseWindow):
                 self.coins.remove(cur_coin)
         self.player_interface.draw_interface(surface,self.hp_num,self.coin_num)
     def event_enter(self, event :pygame.event):
-        pass #66666666666666666666777777777777777777777777777.44444444444444444411111111111111111111111.66666666666666666666111111111111111111.2222222222222222222222
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE and self.hp_num > 0:
+                self.active = not self.active
+            
+
     def movement(self):
+        #the keys that the player is ppressing are recorded
         keys_list = pygame.key.get_pressed()
+        # Check whether the player is trying to up left by pressing the "W" key
         if keys_list[pygame.K_w]:
+            #The program calculates the where the player will be ahead 
             trial_y = self.offset_y - self.player_speed
+            #The algorithm then checks if the player's sprite collides with any of the walls in the list
             if not self.will_collide(self.offset_x,trial_y):
+                # if it doesnt, player moves vertically upwards
                 self.offset_y = trial_y
                 self.direction = "up"
+        # Check whether the player is trying to move left by pressing the "A" key
         if keys_list[pygame.K_a]:
             trial_x = self.offset_x - self.player_speed
             if not self.will_collide(trial_x,self.offset_y):
                 self.offset_x = trial_x
                 self.direction = "left"
+        # Check whether the player is trying to move down by pressing the "S" key
         if keys_list[pygame.K_s]:
             trial_y = self.offset_y + self.player_speed
             if not self.will_collide(self.offset_x,trial_y):
                 self.offset_y = trial_y
                 self.direction = "down"
+        # Check whether the player is trying to move right by pressing the "D" key
         if keys_list[pygame.K_d]:
             trial_x = self.offset_x + self.player_speed
             if not self.will_collide(trial_x,self.offset_y):
@@ -452,7 +480,7 @@ class Player_interface:
         self.health_bar_rect = pygame.Rect(self.health_bar_pos,(self.heart_bar_img.get_width(),self.heart_bar_img.get_height()))
 
         self.coin_icon = pygame.transform.smoothscale(coin, (self.coin_icon_size, self.coin_icon_size))
-        self.coin_bar_pos = pygame.Vector2(900,30)
+        self.coin_bar_pos = pygame.Vector2(20,150)
         coin_bar = heart_icon = pygame.image.load("Textures/Interface/coin_bar.png")
         self.coin_bar_icon = pygame.transform.smoothscale(coin_bar, (self.coin_bar_width,self.coin_bar_width/2))
     
@@ -463,6 +491,7 @@ class Player_interface:
             heart_pos = self.health_bar_pos+pygame.Vector2(self.health_bar_width/17,self.health_bar_width/21.3)+pygame.Vector2(self.health_bar_width/5.6,0)*heart
             heart_rect = pygame.Rect(heart_pos,(self.heart_icon.get_width(),self.heart_icon.get_height()))
             surface.blit(self.heart_icon,heart_rect)
+        
         surface.blit(self.coin_bar_icon,pygame.Rect(self.coin_bar_pos,(self.coin_bar_icon.get_width(),self.coin_bar_icon.get_height())))
         coin_icon_rect = pygame.Rect(self.coin_bar_pos,(self.coin_icon_size,self.coin_icon_size))
         coin_icon_rect.center = self.coin_bar_pos+pygame.Vector2(self.coin_bar_width/4,self.coin_bar_icon.get_height()/2)
@@ -473,7 +502,37 @@ class Player_interface:
         coin_count_rect.center = self.coin_bar_pos+pygame.Vector2(self.coin_bar_icon.get_width()*0.7,self.coin_bar_icon.get_height()/2)
         surface.blit(coin_count_text,coin_count_rect)
         
+
+class PopUpWindow():
+    def __init__(self, closeable, type_, text,cur_lvl):
+        self.closeable = closeable
+        self.cur_lvl = cur_lvl
+
+        buttton_dim = 100
         
+        self.text_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",25)
+        
+        self.type = type_
+        self.text = text
+        self.coords = pygame.Rect(20,600,buttton_dim,buttton_dim)
+        self.home_bt = TranstionButton("Textures/Buttons/PopUps/home.png",coords,1)
+        self.repl_bt = TranstionButton("Textures/Buttons/PopUps/replay.png",coords.topleft+pygame.Vector2(buttton_dim),cur_lvl)
+        self.nxt_bt = TranstionButton("Textures/Buttons/PopUps/next_level.png",coords.topleft+2*pygame.Vector2(buttton_dim),cur_lvl+1)
+        
+    
+    def board(self,surface):
+        surface.fill(54,15,90)
+        text_surface = base_font.render(self.text,True,(255,255,255))
+        text_rect = pygame.Rect(1200/2,200,self.text.get_width(),self.text.get_height())
+        text_rect.center = text_rect.topleft
+
+        if self.closeable == True:
+            surface.blit()
+        elif self.closeable == False and self.type == "win":
+            surface.blit()
+        elif self.closeable == False and self.type == "lose":
+            surface.blit()
+
 
 class Turret:
     def __init__(self, x, y, tile_sizer,ranger,angle,bullet_list):
@@ -487,11 +546,11 @@ class Turret:
         self.current_time = 0
         self.theta = 0
         self.shoot_delay = 0.1
-        self.shoot_num = 20
-        self.round_delay = 2
+        self.shoot_num = 40
+        self.round_delay = 15
         self.round_delay_temp = self.round_delay
         
-        self.shoot_point = pygame.Vector2(0,0)
+        self.barrel_midpoint = pygame.Vector2(0,0)
         self.rect = pygame.Rect(x, y, tile_size,tile_size)
         
     def compile_turret(self, surface,offset):
@@ -502,14 +561,13 @@ class Turret:
         new_rect = rotated_image.get_rect()
         
         turret_center_screen = self.rect.topleft + pygame.Vector2(self.tile_size/1.80,self.tile_size/20)
-        barrel_offset = pygame.Vector2(self.tile_size/2, 0)
 
         new_rect.center = turret_center_screen
-        self.shoot_point=pygame.Vector2(new_rect.centerx,new_rect.centery)+barrel_offset.rotate(-self.angle)+offset
+        self.barrel_midpoint=pygame.Vector2(new_rect.centerx,new_rect.centery)+offset
         
         
         surface.blit(rotated_image, new_rect)
-        # pygame.draw.line(surface,(255,255,255),new_rect.center,self.shoot_point,3)
+        # pygame.draw.line(surface,(255,255,255),new_rect.center,self.barrel_midpoint,3)
 
         self.theta +=5
 
@@ -538,7 +596,9 @@ class Turret:
         if time_var<=cycle_time:
             if time_var>self.round_delay_temp:
                 angle_rad = self.angle*pi/180
-                self.bullet_list.append(Rose_Projectile(self.shoot_point,-angle_rad,5))
+                barrel_offset = pygame.Vector2(self.tile_size/2, 0)
+                self.barrel_midpoint+=barrel_offset.rotate(-self.angle)
+                self.bullet_list.append(Oscilating_Projectile(self.barrel_midpoint,-angle_rad,5))
                 print("SHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOTTTTTTTTTTTTTTTTTTTTTTTTTTT")
                 self.round_delay_temp += self.shoot_delay
         else:
@@ -548,6 +608,34 @@ class Turret:
         print("Temp:",self.round_delay_temp)
     def target():
         pass
+class Multi_Dir_Turret(Turret):
+    def compile_turret(self, surface,offset):
+        surface.blit(multi_dir_turret, self.rect)
+        self.barrel_midpoint=self.rect.center+offset
+        
+    def shoot(self):
+        cycle_time = self.round_delay+self.shoot_delay*self.shoot_num
+        time_var=time()-self.current_time
+
+        if time_var<=cycle_time:
+            if time_var>self.round_delay_temp:
+                # angle_rad = self.angle*pi/180
+                # barrel_offset = pygame.Vector2(self.tile_size/2, 0)
+                # self.barrel_midpoint+=barrel_offset.rotate(-self.angle)
+                # self.bullet_list.append(Oscilating_Projectile(self.barrel_midpoint,-angle_rad,5))
+                directions = 8
+                for i in range(0,directions):
+                    angle_rad = 2*pi/directions*i
+                    barrel_offset = pygame.Vector2(self.tile_size/2, 0)*0.8
+                    shoot_point = self.barrel_midpoint+barrel_offset.rotate_rad(angle_rad)
+                    self.bullet_list.append(Oscilating_Projectile(shoot_point,angle_rad,5))
+                print("SHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOTTTTTTTTTTTTTTTTTTTTTTTTTTT")
+                self.round_delay_temp += self.shoot_delay
+        else:
+            self.current_time = time()
+            self.round_delay_temp = self.round_delay
+        print("Constant:",self.round_delay)
+        print("Temp:",self.round_delay_temp)
 
 class Projectile:
     def __init__(self, center_pos, angle, speed):
@@ -555,7 +643,7 @@ class Projectile:
         self.angle = angle
         self.speed = speed
         self.theta = 0
-        self.theta_increase = 1/50
+        self.theta_increase = 1/10
         self.rect = pygame.Rect(0, 0, projectile_size, projectile_size)
         self.rect.center = self.space_pos
     def velocity(self):
@@ -566,6 +654,7 @@ class Projectile:
         return self.rect.colliderect(player_rect)
         
 class Oscilating_Projectile(Projectile):
+    #velocity function gets overriden
     def velocity(self):
         x = self.speed
         y = sin(self.theta)*self.speed*2
@@ -573,7 +662,9 @@ class Oscilating_Projectile(Projectile):
         return pygame.Vector2(x,y).rotate_rad(self.angle)
 
 class Rose_Projectile(Projectile):
+    #velocity function gets overriden
     def velocity(self):
+        #polar coordinates model is used
         r = self.speed*sin(self.theta*4)
         x = r*cos(self.theta)
         y = r*sin(self.theta)
@@ -581,7 +672,9 @@ class Rose_Projectile(Projectile):
         return pygame.Vector2(x,y).rotate_rad(self.angle)
         
 class Spiral_Projectile(Projectile):
+    #velocity function gets overriden
     def velocity(self):
+        #polar coordinates model is used
         r = self.theta*self.speed
         x = r*cos(self.theta)
         y = r*sin(self.theta)
@@ -627,20 +720,3 @@ while run:
         scene.transition_to = None
     clock.tick(60)
 pygame.quit()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -340,14 +340,7 @@ class Level(BaseWindow):
 
                     print(time()-start,"wall added to the list")
                 if element == "3":
-                    self.world_turrets.append(Turret(x_pos,y_pos,"simple_turret",tile_size,50))
-                if element =="2":
-                    self.offset_x = x_pos*tile_size-self.surface_width/2
-                    self.offset_y = y_pos*tile_size-self.surface_height/2
-                if element == "4":
-                    self.active_projectiles.append(Oscilating_Projectile(x_pos,y_pos,pi,5,pi,projectile_size))
-                if element == "5":
-                    self.world_turrets.append(Turret(x_pos,y_pos,tile_size,100))
+                    self.active_projectiles.append(Projectile(x_pos,y_pos,0,0.5))
                 element_num += 1
             row_num += 1
         self.world_walls = wall_list
@@ -361,11 +354,15 @@ class Level(BaseWindow):
             obj.tile_rect.x = obj.world_x - self.offset_x
             obj.tile_rect.y = obj.world_y - self.offset_y
             surface.blit(wall_sprite, obj.tile_rect)
-       
+        
         for proj in self.active_projectiles:
-            proj.rect.topleft = proj.space_pos- pygame.Vector2(self.offset_x,self.offset_y)
-            surface.blit(projectile, proj.rect)
+            #projectile's coordinates are adjusted with offset variables
+            proj.rect.topleft = proj.space_pos - pygame.Vector2(self.offset_x,self.offset_y)
+            #velocity (projectile's offset) is added on each tick of the game
             proj.space_pos += proj.velocity()
+            #projectile is drawn on the screen with correct coordinates
+            surface.blit(projectile, proj.rect)
+            #algorithm checks if the projectile collides with player, and if if it does, object is deleted
             if proj.check_col(self.player_rect):
                 self.active_projectiles.remove(proj)
             
@@ -449,19 +446,25 @@ class Turret:
 
 
 class Projectile:
-    def __init__(self, x, y,angle,speed,theta_increase,tile_size):
+    def __init__(self, x, y,angle,speed):
+        #Determines the beginning position of the projectile
         self.space_pos = pygame.Vector2(x,y)
-        self.theta = 0
-        self.theta_increase = theta_increase/100
+
+        #Determines at what angle and with what speed will the projectile be shot at
         self.angle = angle
         self.speed = speed
+
+        #rectangle is created to check for the collisions with the environment
         self.rect = pygame.Rect(x, y, projectile_size,projectile_size)
-        pass
+
     def velocity(self):
+        #these are offsets, which are added on each tick of the game, which are equal to speed
         x = self.speed
-        y = self.speed
+        y = 0
+        #Function returns the offset that will be added to the projectile's position
         return pygame.Vector2(x,y).rotate_rad(self.angle)
     def check_col(self,player_rect):
+        #checks if player hitbox collides with the bullet
         return self.rect.colliderect(player_rect)
         
 class Oscilating_Projectile(Projectile):
