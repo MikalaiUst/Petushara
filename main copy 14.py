@@ -531,6 +531,7 @@ class PopUpWindow():
         elif self.closeable == False and self.type == "win":
             surface.blit()
         elif self.closeable == False and self.type == "lose":
+            
             surface.blit()
 
 
