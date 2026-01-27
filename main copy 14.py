@@ -290,7 +290,6 @@ class TranstionButton:
         #coordinates are stored for click detection
         self.coords = coords
         self.target = target
-        pass
     def board(self,surface:pygame.Surface):
         #button is drawn at the defined coordinates
         surface.blit(self.button_pic,(self.coords.x,self.coords.y))
@@ -309,7 +308,7 @@ class Levels:
         pass
 
 class Level(BaseWindow):
-    def __init__(self, level_name):
+    def __init__(self, level_name,lvl_num):
         # file = open("levels/" + level_name + ".txt", "r")
 
         #player variables
@@ -325,6 +324,17 @@ class Level(BaseWindow):
 
         #pop-up window control variables
         self.active = True
+        self.state = "ACTIVE"
+        self.cur_lvl = lvl_num
+
+        pop_up_bt_dim = 100
+        pop_up_bt_param = pygame.Vector2(1200/2,600)-pygame.Vector2(pop_up_bt_dim/2,pop_up_bt_dim/2)
+
+        self.tr_bt_list = [
+            TranstionButton("Textures\Buttons\PopUps\\next_level.png",pygame.Rect(pop_up_bt_param,(pop_up_bt_dim,pop_up_bt_dim)),lvl_num+1),
+            TranstionButton("Textures\Buttons\PopUps\home.png",pygame.Rect(pop_up_bt_param+pygame.Vector2(-400,0),(pop_up_bt_dim,pop_up_bt_dim)),1),
+            TranstionButton("Textures\Buttons\PopUps\\replay.png",pygame.Rect(pop_up_bt_param+pygame.Vector2(400,0),(pop_up_bt_dim,pop_up_bt_dim)),lvl_num)
+        ]
 
         #current offset
         self.offset_x = 0
@@ -411,10 +421,69 @@ class Level(BaseWindow):
                 self.coin_num+=1
                 self.coins.remove(cur_coin)
         self.player_interface.draw_interface(surface,self.hp_num,self.coin_num)
+
+        #Checks if the player had lost all of his health points
+        if self.hp_num < 1:
+            #Game's state is changed to "death"
+            self.state = "DEATH"
+            #variables "active" is set to be false, so the player can't exit this screen
+            self.active = False
+        if self.coin_num == 17:
+            self.state = "WON"
+            self.active = False
+        if not self.active:
+            self.pop_up(surface)
+        
+
     def event_enter(self, event :pygame.event):
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE and self.hp_num > 0:
+            if event.key == pygame.K_ESCAPE and self.hp_num > 0 and self.coin_num < 17:
                 self.active = not self.active
+                if self.active:
+                    self.state = "ACTIVE"
+                else:
+                    self.state = "PAUSE"
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self.state == "PAUSE":
+                for index in self.tr_bt_list[1:]:
+                    temp = index.event_enter(event)
+                    print(result)
+                    if temp == 2:
+                        print("wefvtrv")
+                        self.coin_num = 0
+                        self.hp_num = 5
+                        self.offset_x = 0
+                        self.offset_y = 0
+                        self.state = "ACTIVE"
+                        self.active_projectiles.clear()
+                        for turret in self.world_turrets:
+                            turret.current_time = time()-turret.round_delay
+                        
+                        self.active = True
+                    else:
+                        self.transition_to = result
+            if self.state == "DEATH":
+                for button in self.tr_bt_list[1:2]:
+                    print(result)
+                print(result)
+            if self.state == "WON":
+                result = self.tr_bt_list.event_enter(event)
+                print(result)
+
+            
+    def pop_up(self,surface):
+        surface.fill((54,15,90))
+        if self.state == "WON":
+            self.tr_bt_list[0].board(surface)
+            self.tr_bt_list[1].board(surface)
+            self.tr_bt_list[2].board(surface)
+        if self.state == "PAUSE":
+            self.tr_bt_list[1].board(surface)
+            self.tr_bt_list[2].board(surface)
+        if self.state == "DEATH":
+            self.tr_bt_list[1].board(surface)
+            self.tr_bt_list[2].board(surface)
+
             
 
     def movement(self):
@@ -454,6 +523,10 @@ class Level(BaseWindow):
                 print("collision detected")
                 return True
         return False
+    
+    
+
+
 
 class Wall:
     def __init__(self, x, y, tile_size):
@@ -505,20 +578,7 @@ class Player_interface:
 
 class PopUpWindow():
     def __init__(self, closeable, type_, text,cur_lvl):
-        self.closeable = closeable
-        self.cur_lvl = cur_lvl
-
-        buttton_dim = 100
-        
-        self.text_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",25)
-        
-        self.type = type_
-        self.text = text
-        self.coords = pygame.Rect(20,600,buttton_dim,buttton_dim)
-        self.home_bt = TranstionButton("Textures/Buttons/PopUps/home.png",coords,1)
-        self.repl_bt = TranstionButton("Textures/Buttons/PopUps/replay.png",coords.topleft+pygame.Vector2(buttton_dim),cur_lvl)
-        self.nxt_bt = TranstionButton("Textures/Buttons/PopUps/next_level.png",coords.topleft+2*pygame.Vector2(buttton_dim),cur_lvl+1)
-        
+        pass
     
     def board(self,surface):
         surface.fill(54,15,90)
@@ -531,9 +591,9 @@ class PopUpWindow():
         elif self.closeable == False and self.type == "win":
             surface.blit()
         elif self.closeable == False and self.type == "lose":
-            
             surface.blit()
-
+    def event_enter(self,):
+        pass
 
 class Turret:
     def __init__(self, x, y, tile_sizer,ranger,angle,bullet_list):
@@ -547,8 +607,8 @@ class Turret:
         self.current_time = 0
         self.theta = 0
         self.shoot_delay = 0.1
-        self.shoot_num = 40
-        self.round_delay = 15
+        self.shoot_num = 5
+        self.round_delay = 3
         self.round_delay_temp = self.round_delay
         
         self.barrel_midpoint = pygame.Vector2(0,0)
@@ -583,7 +643,6 @@ class Turret:
             # print("this player is entering the circle")
             if self.state == "INACTIVE":
                 self.current_time = time()-self.round_delay
-                print(self.current_time)
             self.state = "SHOOTING"
             return True
         else:
@@ -700,7 +759,7 @@ textfield_list = [password_field,username_field]
 
 LogIn_Screen = LogInWindow()       #login screen with username/password fields and messages
 MainMenu_Screen = MainMenuWindow() #main menu where user chooses what to do next
-Level_1 = Level("level_1")              #placeholder for the first level of the game
+Level_1 = Level("level_1",2)              #placeholder for the first level of the game
 Window_list = [LogIn_Screen,MainMenu_Screen,Level_1]
 
 #this variable defines which scene is currently active (0 = LogIn, 1 = MainMenu, 2 = Level_1, etc.)
