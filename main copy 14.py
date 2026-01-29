@@ -445,31 +445,32 @@ class Level(BaseWindow):
                     self.state = "PAUSE"
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.state == "PAUSE":
-                for index in self.tr_bt_list[1:]:
-                    temp = index.event_enter(event)
-                    print(result)
-                    if temp == 2:
-                        print("wefvtrv")
-                        self.coin_num = 0
-                        self.hp_num = 5
-                        self.offset_x = 0
-                        self.offset_y = 0
-                        self.state = "ACTIVE"
-                        self.active_projectiles.clear()
-                        for turret in self.world_turrets:
-                            turret.current_time = time()-turret.round_delay
-                        
-                        self.active = True
-                    else:
-                        self.transition_to = result
+                for button in self.tr_bt_list[1:]:
+                    res = button.event_enter(event)
+                    if res != None:
+                        self.lvl_reset()
+                        break
             if self.state == "DEATH":
                 for button in self.tr_bt_list[1:2]:
                     print(result)
                 print(result)
             if self.state == "WON":
-                result = self.tr_bt_list.event_enter(event)
-                print(result)
+                for button in self.tr_bt_list:
+                    if res != None:
+                        self.lvl_reset()
+                        self.transition_to = res
 
+                
+    def lvl_reset(self):
+        self.coin_num = 0
+        self.hp_num = 5
+        self.offset_x = 0
+        self.offset_y = 0
+        self.state = "ACTIVE"
+        self.active_projectiles.clear()
+        for turret in self.world_turrets:
+            turret.current_time = time()-turret.round_delay
+        self.active = True
             
     def pop_up(self,surface):
         surface.fill((54,15,90))

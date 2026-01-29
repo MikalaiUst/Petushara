@@ -11,6 +11,7 @@ clock = pygame.time.Clock()
 tile_size = 100
 projectile_size = 20
 coin_size = 50
+pop_up_size = 50
 
 window = pygame.display.set_mode((1200,800))
 title = pygame.display.set_caption("LogIn Screen")
@@ -25,6 +26,7 @@ okay_box = pygame.image.load("Textures/Buttons/blue_tick.png")
 
 icon = pygame.image.load("Textures/Backgrounds/icon.png")
 pygame.display.set_icon(icon)
+
 
 wall_sprite = pygame.image.load("Textures/Tiles/tiling_wall.png")
 wall_sprite = pygame.transform.smoothscale(wall_sprite, (tile_size, tile_size))
@@ -161,9 +163,9 @@ class LogInWindow(BaseWindow):
         self.user_response = None
         #messages that will be displayed in this window are declared here
         self.messages = {"incorrect_password_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username already exists. Password to this account is incorrect",True,10,45),
-                         "login_proceed_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username already exists. Do you want to proceed with logging in you can access the account now",True,10,45),#
+                         "login_proceed_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username already exists. Do you want to proceed with logging in you can access the account now",True,10,45),
                          "non_existant_username_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username doesn't exist. Do you want to create new account?",True,10,45)}
-        self.active_message = "login_proceed_message"
+        self.active_message = ""
         #background is adjusted to this particular window
         background = pygame.image.load("Textures/Backgrounds/LogIn.png")
         self.background = pygame.transform.smoothscale(background, (1200, 800))
@@ -247,8 +249,6 @@ class TextArea:
         surface.blit(text_surface, (x_coord,y_coord))
 
 
-
-
     def event_enter(self, event):
         if event.type == pygame.KEYDOWN and self.active:
             #this section adds unicode characters to the message as user is typing them
@@ -266,9 +266,9 @@ class MainMenuWindow(BaseWindow):
     def __init__(self):
         #buttons are declared and stored in a list
         self.button_list = [
-            TranstionButton("levels",pygame.Rect(400,225,400,150),2),
-            TranstionButton("leaderboard",pygame.Rect(400,425,400,150),3),
-            TranstionButton("save_files",pygame.Rect(400,600,425,150),4)
+            TranstionButton("Textures/Buttons/levels.png",pygame.Rect(400,225,400,150),2),
+            TranstionButton("Textures/Buttons/leaderboard.png",pygame.Rect(400,425,400,150),3),
+            TranstionButton("Textures/Buttons/save_files.png",pygame.Rect(400,600,425,150),4)
         ]
     def board(self,surface):
         surface.blit(background, (0, 0))
@@ -281,17 +281,15 @@ class MainMenuWindow(BaseWindow):
             result = button.event_enter(event)
             if result:
                 self.transition_to = result
-                print(f"Transitioning to: {self.transition_to}")
 
 class TranstionButton:
     def __init__(self,button_pic_name,coords:pygame.Rect, target):
         #button texture is loaded and scaled to fit the given coordinates
-        self.button_pic = pygame.image.load("Textures/Buttons/"+ button_pic_name +".png")
+        self.button_pic = pygame.image.load(button_pic_name)
         self.button_pic = pygame.transform.smoothscale(self.button_pic, (coords.width, coords.height))
         #coordinates are stored for click detection
         self.coords = coords
         self.target = target
-        pass
     def board(self,surface:pygame.Surface):
         #button is drawn at the defined coordinates
         surface.blit(self.button_pic,(self.coords.x,self.coords.y))
@@ -310,7 +308,7 @@ class Levels:
         pass
 
 class Level(BaseWindow):
-    def __init__(self, level_name):
+    def __init__(self, level_name,lvl_num):
         # file = open("levels/" + level_name + ".txt", "r")
 
         #player variables
@@ -320,14 +318,31 @@ class Level(BaseWindow):
         self.sprite_dir = "right"
         self.character_img = pygame.image.load("Textures/user_icons/hero.png")
         self.character_img = pygame.transform.smoothscale(self.character_img, (self.player_param, self.player_param))
+        #player's attribute counts
         self.coin_num = 0
         self.hp_num = 5
-        
 
+        #pop-up window control variables
+        self.active = True
+        self.state = "ACTIVE"
+        self.cur_lvl = lvl_num
+
+        pop_up_bt_dim = 100
+        pop_up_bt_param = pygame.Vector2(1200/2,600)-pygame.Vector2(pop_up_bt_dim/2,pop_up_bt_dim/2)
+
+        self.tr_bt_list = [
+            TranstionButton("Textures\Buttons\PopUps\\next_level.png",pygame.Rect(pop_up_bt_param,(pop_up_bt_dim,pop_up_bt_dim)),lvl_num+1),
+            TranstionButton("Textures\Buttons\PopUps\home.png",pygame.Rect(pop_up_bt_param+pygame.Vector2(-400,0),(pop_up_bt_dim,pop_up_bt_dim)),1),
+            TranstionButton("Textures\Buttons\PopUps\\replay.png",pygame.Rect(pop_up_bt_param+pygame.Vector2(400,0),(pop_up_bt_dim,pop_up_bt_dim)),lvl_num)
+        ]
+
+        #current offset
         self.offset_x = 0
         self.offset_y = 0
+        #screen parametres
         self.surface_height = 800
         self.surface_width = 1200
+        #player's interface
         self.player_interface = Player_interface()
 
         #player stored as a rectangle
@@ -335,10 +350,10 @@ class Level(BaseWindow):
         file = open("Textures/levels/" + level_name + ".txt", "r")
 
         
-        wall_list = []
+        self.world_walls = []
         self.world_turrets = []
         self.active_projectiles = []
-        self.coins =[]
+        self.active_coins =[]
         row_num = 0
        
         for line in file.readlines():
@@ -347,7 +362,7 @@ class Level(BaseWindow):
                 x_pos = element_num *tile_size
                 y_pos = row_num *tile_size
                 if element == "1":
-                    wall_list.append(Wall(x_pos,y_pos,tile_size))
+                    self.world_walls.append(Wall(x_pos,y_pos,tile_size))
 
                     # print(time()-start,"wall added to the list")
                 if element == "3":
@@ -356,7 +371,7 @@ class Level(BaseWindow):
                     self.offset_x = x_pos*tile_size-self.surface_width/2
                     self.offset_y = y_pos*tile_size-self.surface_height/2
                 if element == "4":
-                    self.coins.append(Coins(x_pos,y_pos))
+                    self.active_coins.append(Coins(x_pos,y_pos))
                 if element == "5":
                     self.world_turrets.append(Turret(x_pos,y_pos,tile_size,500,45,self.active_projectiles))
                 if element == "6":
@@ -365,7 +380,6 @@ class Level(BaseWindow):
                     self.active_projectiles.append(Rose_Projectile(pygame.Vector2(x_pos,y_pos),0,10))
                 element_num += 1
             row_num += 1
-        self.world_walls = wall_list
            
     def board(self,surface):
         
@@ -373,7 +387,9 @@ class Level(BaseWindow):
         surface.fill((0, 0, 0))
         
         surface.blit(self.character_img, (self.player_rect.x,self.player_rect.y))
-        self.movement()
+        if self.active == True:
+            self.movement()
+        
         for obj in self.world_walls:
             obj.tile_rect.x = obj.world_x - self.offset_x
             obj.tile_rect.y = obj.world_y - self.offset_y
@@ -384,26 +400,93 @@ class Level(BaseWindow):
             turret.rect.topleft = turret.pos - offset
             turret.compile_turret(surface,offset)
             if turret.check_collision(self.player_rect.x,self.player_rect.y,self.player_param,offset):
-                turret.shoot()
+                if self.active == True:
+                    turret.shoot()
         
         for proj in self.active_projectiles:
             proj.rect.topleft = proj.space_pos - pygame.Vector2(self.offset_x,self.offset_y)
             surface.blit(projectile, proj.rect)
-            proj.space_pos += proj.velocity()
+            if self.active == True:
+                proj.space_pos += proj.velocity()
             if proj.check_col(self.player_rect):
                 self.hp_num -=1
                 self.active_projectiles.remove(proj)
 
-        for cur_coin in self.coins:
+        for cur_coin in self.active_coins:
             offset = pygame.Vector2(self.offset_x,self.offset_y)
             cur_coin.rect.topleft = cur_coin.pos - offset
             surface.blit(coin,cur_coin.rect)
             if cur_coin.check_col(self.player_rect):
                 self.coin_num+=1
-                self.coins.remove(cur_coin)
+                self.active_coins.remove(cur_coin)
         self.player_interface.draw_interface(surface,self.hp_num,self.coin_num)
+
+        #Checks if the player had lost all of his health points
+        if self.hp_num < 1:
+            #Game's state is changed to "death"
+            self.state = "DEATH"
+            #variables "active" is set to be false, so the player can't exit this screen
+            self.active = False
+        if self.coin_num == 17:
+            self.state = "WON"
+            self.active = False
+        if not self.active:
+            self.pop_up(surface)
+        
+
     def event_enter(self, event :pygame.event):
-        pass #66666666666666666666777777777777777777777777777.44444444444444444411111111111111111111111.66666666666666666666111111111111111111.2222222222222222222222
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE and self.hp_num > 0 and self.coin_num < 17:
+                self.active = not self.active
+                if self.active:
+                    self.state = "ACTIVE"
+                else:
+                    self.state = "PAUSE"
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self.state == "PAUSE":
+                for button in self.tr_bt_list[1:]:
+                    res = button.event_enter(event)
+                    if res != None:
+                        self.lvl_reset()
+                        break
+            if self.state == "DEATH":
+                for button in self.tr_bt_list[1:2]:
+                    print(result)
+                print(result)
+            if self.state == "WON":
+                for button in self.tr_bt_list:
+                    res = button.event_enter(event)
+                    if res != None:
+                        self.lvl_reset()
+                        self.transition_to = res
+
+                
+    def lvl_reset(self):
+        self.coin_num = 0
+        self.hp_num = 5
+        self.offset_x = 0
+        self.offset_y = 0
+        self.state = "ACTIVE"
+        self.active_projectiles.clear()
+        for turret in self.world_turrets:
+            turret.current_time = time() - turret.round_delay_temp
+        self.active = True
+            
+    def pop_up(self,surface):
+        surface.fill((54,15,90))
+        if self.state == "WON":
+            self.tr_bt_list[0].board(surface)
+            self.tr_bt_list[1].board(surface)
+            self.tr_bt_list[2].board(surface)
+        if self.state == "PAUSE":
+            self.tr_bt_list[1].board(surface)
+            self.tr_bt_list[2].board(surface)
+        if self.state == "DEATH":
+            self.tr_bt_list[1].board(surface)
+            self.tr_bt_list[2].board(surface)
+
+            
+
     def movement(self):
         #the keys that the player is ppressing are recorded
         keys_list = pygame.key.get_pressed()
@@ -441,6 +524,10 @@ class Level(BaseWindow):
                 print("collision detected")
                 return True
         return False
+    
+    
+
+
 
 class Wall:
     def __init__(self, x, y, tile_size):
@@ -491,14 +578,23 @@ class Player_interface:
         
 
 class PopUpWindow():
-    def __init__(self, closeable, type_, text):
-        self.closeable = closeable
-        self.type = type_
-        self.text = text
-        
-        self.home_bt
-        
-        
+    def __init__(self, closeable, type_, text,cur_lvl):
+        pass
+    
+    def board(self,surface):
+        surface.fill(54,15,90)
+        text_surface = base_font.render(self.text,True,(255,255,255))
+        text_rect = pygame.Rect(1200/2,200,self.text.get_width(),self.text.get_height())
+        text_rect.center = text_rect.topleft
+
+        if self.closeable == True:
+            surface.blit()
+        elif self.closeable == False and self.type == "win":
+            surface.blit()
+        elif self.closeable == False and self.type == "lose":
+            surface.blit()
+    def event_enter(self,):
+        pass
 
 class Turret:
     def __init__(self, x, y, tile_sizer,ranger,angle,bullet_list):
@@ -512,8 +608,8 @@ class Turret:
         self.current_time = 0
         self.theta = 0
         self.shoot_delay = 0.1
-        self.shoot_num = 40
-        self.round_delay = 15
+        self.shoot_num = 5
+        self.round_delay = 3
         self.round_delay_temp = self.round_delay
         
         self.barrel_midpoint = pygame.Vector2(0,0)
@@ -548,7 +644,6 @@ class Turret:
             # print("this player is entering the circle")
             if self.state == "INACTIVE":
                 self.current_time = time()-self.round_delay
-                print(self.current_time)
             self.state = "SHOOTING"
             return True
         else:
@@ -564,7 +659,7 @@ class Turret:
                 angle_rad = self.angle*pi/180
                 barrel_offset = pygame.Vector2(self.tile_size/2, 0)
                 self.barrel_midpoint+=barrel_offset.rotate(-self.angle)
-                self.bullet_list.append(Rose_Projectile(self.barrel_midpoint,-angle_rad,5))
+                self.bullet_list.append(Oscilating_Projectile(self.barrel_midpoint,-angle_rad,5))
                 print("SHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOTTTTTTTTTTTTTTTTTTTTTTTTTTT")
                 self.round_delay_temp += self.shoot_delay
         else:
@@ -609,7 +704,7 @@ class Projectile:
         self.angle = angle
         self.speed = speed
         self.theta = 0
-        self.theta_increase = 1/100
+        self.theta_increase = 1/10
         self.rect = pygame.Rect(0, 0, projectile_size, projectile_size)
         self.rect.center = self.space_pos
     def velocity(self):
@@ -665,7 +760,7 @@ textfield_list = [password_field,username_field]
 
 LogIn_Screen = LogInWindow()       #login screen with username/password fields and messages
 MainMenu_Screen = MainMenuWindow() #main menu where user chooses what to do next
-Level_1 = Level("level_1")              #placeholder for the first level of the game
+Level_1 = Level("level_1",2)              #placeholder for the first level of the game
 Window_list = [LogIn_Screen,MainMenu_Screen,Level_1]
 
 #this variable defines which scene is currently active (0 = LogIn, 1 = MainMenu, 2 = Level_1, etc.)
@@ -686,20 +781,3 @@ while run:
         scene.transition_to = None
     clock.tick(60)
 pygame.quit()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
