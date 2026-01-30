@@ -323,13 +323,21 @@ class Level(BaseWindow):
         self.hp_num = 5
 
         #pop-up window control variables
-        self.active = True
-        self.state = "ACTIVE"
-        self.cur_lvl = lvl_num
 
+        #determines if the game is frozen
+        self.active = True
+        #keeps track of what status does the player have
+        self.state = "ACTIVE"
+        #stores the index of current level
+        self.cur_lvl = lvl_num
+        #keeps track if the player has completed the level
+        self.complete = False
+
+        #calculates the positions of the pop up buttons
         pop_up_bt_dim = 100
         pop_up_bt_param = pygame.Vector2(1200/2,600)-pygame.Vector2(pop_up_bt_dim/2,pop_up_bt_dim/2)
 
+        #list, storing the popup buttons
         self.tr_bt_list = [
             TranstionButton("Textures\Buttons\PopUps\\next_level.png",pygame.Rect(pop_up_bt_param,(pop_up_bt_dim,pop_up_bt_dim)),lvl_num+1),
             TranstionButton("Textures\Buttons\PopUps\home.png",pygame.Rect(pop_up_bt_param+pygame.Vector2(-400,0),(pop_up_bt_dim,pop_up_bt_dim)),1),
@@ -430,24 +438,32 @@ class Level(BaseWindow):
         if self.coin_num == 17:
             self.state = "WON"
             self.active = False
+        #if the game is not active, the pop Up Screen is shown
+
         if not self.active:
             self.pop_up(surface)
         
 
     def event_enter(self, event :pygame.event):
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE and self.hp_num > 0 and self.coin_num < 17:
+            #if player has less than 1 hp or he reached the end of the level, he can't switch back to active state
+            if event.key == pygame.K_ESCAPE and self.hp_num > 0 and self.complete == False:
+                #During pausing, the active state switches between tru and false
                 self.active = not self.active
+                #if the player has neither died, nor won, he can pause and unpause the game
                 if self.active:
                     self.state = "ACTIVE"
                 else:
                     self.state = "PAUSE"
+                
+        #Algorithm listens for the right 
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.state == "PAUSE":
-                for button in self.tr_bt_list[1:]:
+                for button in self.tr_bt_list[:-1]:
                     res = button.event_enter(event)
                     if res != None:
                         self.lvl_reset()
+                        self.transition_to = res
                         break
             if self.state == "DEATH":
                 for button in self.tr_bt_list[1:2]:
@@ -473,7 +489,9 @@ class Level(BaseWindow):
         self.active = True
             
     def pop_up(self,surface):
-        surface.fill((54,15,90))
+        #background is setted up
+        surface.fill((25,53,79))
+        #depending on the game's state different sets of buttons are shown
         if self.state == "WON":
             self.tr_bt_list[0].board(surface)
             self.tr_bt_list[1].board(surface)
@@ -524,10 +542,6 @@ class Level(BaseWindow):
                 print("collision detected")
                 return True
         return False
-    
-    
-
-
 
 class Wall:
     def __init__(self, x, y, tile_size):
@@ -575,27 +589,7 @@ class Player_interface:
         coin_count_rect = pygame.Rect(self.coin_bar_pos,(coin_count_text.get_width(),coin_count_text.get_height()))
         coin_count_rect.center = self.coin_bar_pos+pygame.Vector2(self.coin_bar_icon.get_width()*0.7,self.coin_bar_icon.get_height()/2)
         surface.blit(coin_count_text,coin_count_rect)
-        
-
-class PopUpWindow():
-    def __init__(self, closeable, type_, text,cur_lvl):
-        pass
     
-    def board(self,surface):
-        surface.fill(54,15,90)
-        text_surface = base_font.render(self.text,True,(255,255,255))
-        text_rect = pygame.Rect(1200/2,200,self.text.get_width(),self.text.get_height())
-        text_rect.center = text_rect.topleft
-
-        if self.closeable == True:
-            surface.blit()
-        elif self.closeable == False and self.type == "win":
-            surface.blit()
-        elif self.closeable == False and self.type == "lose":
-            surface.blit()
-    def event_enter(self,):
-        pass
-
 class Turret:
     def __init__(self, x, y, tile_sizer,ranger,angle,bullet_list):
         self.pos = pygame.Vector2(x,y)
