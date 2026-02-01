@@ -308,7 +308,7 @@ class Levels:
         pass
 
 class Level(BaseWindow):
-    def __init__(self, level_name,lvl_num,time_lim):
+    def __init__(self, level_name,lvl_num,time_lim,def_score):
         # file = open("levels/" + level_name + ".txt", "r")
 
         #player variables
@@ -321,9 +321,15 @@ class Level(BaseWindow):
         #player's attribute counts
         self.coin_num = 0
         self.hp_num = 5
+        
+        self.def_score = def_score
+        self.score = 0
 
+        #stores the number of seconds the user had spent on this level
         self.cur_time = 0
+        #stores the time point, after which player's score will start to reduce
         self.time_limit = time_lim
+
 
         #pop-up window control variables
 
@@ -396,7 +402,7 @@ class Level(BaseWindow):
             row_num += 1
             
     def board(self,surface):
-        
+        #if game is active, time gets added
         if self.active:
             self.cur_time+=clock.get_time()/1000
         
@@ -503,6 +509,8 @@ class Level(BaseWindow):
         self.hp_num = 5
         self.offset_x = 0
         self.offset_y = 0
+        self.cur_time = 0
+        self.score = 0
         self.state = "ACTIVE"
         #all currently active projectiles are destroyed
         self.active_projectiles.clear()
@@ -609,18 +617,27 @@ class Player_interface:
         self.health_bar_pos = pygame.Vector2(20,30)
         #heart bar's
         self.health_bar_rect = pygame.Rect(self.health_bar_pos,(self.heart_bar_img.get_width(),self.heart_bar_img.get_height()))
+
+
         self.coin_icon = pygame.transform.smoothscale(coin, (self.coin_icon_size, self.coin_icon_size))
         #coordinates of the coin counter are set
         self.coin_bar_pos = pygame.Vector2(20,150)
         #coin bar is loaded and scaled
         coin_bar = pygame.image.load("Textures/Interface/coin_bar.png")
         self.coin_bar_icon = pygame.transform.smoothscale(coin_bar, (self.coin_bar_width,self.coin_bar_width/2))
+
+
+        #coordinates for the time bar are set
         self.time_bar_pos = pygame.Vector2(980,30)
+        #timer bar is loaded and scaled (same sprite as the one for the coin bar is used)
         self.time_bar_icon = pygame.transform.smoothscale(coin_bar, (self.time_bar_width,self.time_bar_width/2.5))
 
+        #score bar's coordinates are set
+        self.score_bar_pos = pygame.Vector2(875,625)
+        #score bar prite is loaded and scaled
         score_bar = pygame.image.load("Textures/Interface/score_bar.png")
         self.score_bar_icon = pygame.transform.smoothscale(score_bar, (self.score_bar_width,self.score_bar_width/2))
-        self.score_bar_pos = pygame.Vector2(875,625)
+        
 
         
     
@@ -644,6 +661,7 @@ class Player_interface:
         #coin icon is displayed
         surface.blit(self.coin_icon,coin_icon_rect)
         #coin number is rendered
+
         coin_count_text = self.icon_font.render("x"+str(coin_num),True,(255,255,255))
         #coin number's position is calculated
         coin_count_rect = pygame.Rect(self.coin_bar_pos,(coin_count_text.get_width(),coin_count_text.get_height()))
@@ -651,27 +669,38 @@ class Player_interface:
         #coin number is displayed
         surface.blit(coin_count_text,coin_count_rect)
 
+        #score bar is displayed
         surface.blit(self.score_bar_icon,self.score_bar_pos)
 
+        #time bar is displayed
         surface.blit(self.time_bar_icon,self.time_bar_pos)
+        #time spent on level gets turned into minutes and seconds
         min_num = 60
         minutes = timer//min_num
         seconds = round(timer%min_num,1)
+        #string of the current time is created
         cur_time = str(int(minutes))+":"+str(seconds)
+
+        #time limit gets turned into minutes and seconds and then converted into string
         time_limit_str = str(int(time_limit//min_num))+":"+str(round(time_limit%min_num,1))
+        #colour for the timer is set
         time_colour = (255,255,255)
+
+        #if time exceeds the time limit, timer colour is changed to red to soginal that score is being decreased
         if timer>time_limit*2:
             time_colour = (235,0,0)
         elif timer>time_limit:
             time_colour = (231,135,131)
+        
+        #time and time limit are rendered
         time_area = self.time_font.render(cur_time,True,time_colour)
         time_limit_area = self.time_limit_font.render(time_limit_str,True,(231,135,131))
+
+        #time and time limit are displayed in the time bar
         surface.blit(time_limit_area,self.time_bar_pos+pygame.Vector2(self.time_bar_width/10,self.time_bar_icon.get_height()/1.5))
         surface.blit(time_area,self.time_bar_pos+pygame.Vector2(self.time_bar_width/12,self.time_bar_width/12))
 
 
-
-    
 class Turret:
     def __init__(self, x, y, tile_sizer,ranger,angle,bullet_list):
         self.pos = pygame.Vector2(x,y)
@@ -836,8 +865,8 @@ textfield_list = [password_field,username_field]
 
 LogIn_Screen = LogInWindow()       #login screen with username/password fields and messages
 MainMenu_Screen = MainMenuWindow() #main menu where user chooses what to do next
-Level_1 = Level("level_1",2,40)
-Level_2 = Level("level_2",3,30)              #placeholder for the first level of the game
+Level_1 = Level("level_1",2,40,1000)
+Level_2 = Level("level_2",3,30,1000)              #placeholder for the first level of the game
 Window_list = [LogIn_Screen,MainMenu_Screen,Level_1,Level_2]
 
 #this variable defines which scene is currently active (0 = LogIn, 1 = MainMenu, 2 = Level_1, etc.)
