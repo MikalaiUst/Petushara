@@ -109,7 +109,7 @@ class Message: #Logic for the pop up messages
        
         self.coords.height = height+self.text_height+self.button_1_param.height+self.padding*2
         self.text = text_message
-        print(self.text)
+        # print(self.text)
     def calc_width(self, text):
         #method used to calculate the width of instantiated text
         return self.font.render(text,True,(100,100,100)).get_width()
@@ -332,6 +332,7 @@ class Level(BaseWindow):
         self.cur_lvl = lvl_num
         #keeps track if the player has completed the level
         self.complete = False
+        self.pop_up_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",70)
 
         #calculates the positions of the pop up buttons
         pop_up_bt_dim = 100
@@ -461,7 +462,6 @@ class Level(BaseWindow):
         #Algorithm listens for the right 
         if event.type == pygame.MOUSEBUTTONDOWN:
             #Depending on the game's current state algorithm listens only to certain buttons
-
             #Button listener, when player pauses the game
             if self.state == "PAUSE":
                 #Algorithm loops and checks through all buttons, listening to each one individualy
@@ -471,7 +471,6 @@ class Level(BaseWindow):
                     if res != None:
                         #lelvel's parametres are set to the initial ones
                         self.lvl_reset()
-                        #
                         self.transition_to = res
                         #break statement is called to prevent from looping further through the buttons
                         break
@@ -494,30 +493,42 @@ class Level(BaseWindow):
 
     #method that resets level's variables and lists
     def lvl_reset(self):
+        #player's hp, coin number, position and state are reset
         self.coin_num = 0
         self.hp_num = 5
         self.offset_x = 0
         self.offset_y = 0
         self.state = "ACTIVE"
+        #all currently active projectiles are destroyed
         self.active_projectiles.clear()
+        #turret's cooldown times are set to default
         for turret in self.world_turrets:
             turret.current_time = time() - turret.round_delay_temp
-        print(self.perm_coins)
-        self.active_coins = self.perm_coins
+        #restores all collectible coins back onto the level
+        self.active_coins = self.perm_coins.copy()
         self.active = True
-            
+
+
     def pop_up(self,surface):
         #background is setted up
         surface.fill((25,53,79))
         #depending on the game's state different sets of buttons are shown
         if self.state == "WON":
+            #text is rendered
+            text_surface = self.pop_up_font.render("YOU WON!",True,(255,255,255))
+            #text is placed in the middle of the screen
+            surface.blit(text_surface,pygame.Vector2(1200/2,300)-pygame.Vector2(text_surface.get_width()/2,text_surface.get_height()/2))
             self.tr_bt_list[0].board(surface)
             self.tr_bt_list[1].board(surface)
             self.tr_bt_list[2].board(surface)
         if self.state == "PAUSE":
+            text_surface = self.pop_up_font.render("PAUSE",True,(255,255,255))
+            surface.blit(text_surface,pygame.Vector2(1200/2,300)-pygame.Vector2(text_surface.get_width()/2,text_surface.get_height()/2))
             self.tr_bt_list[1].board(surface)
             self.tr_bt_list[2].board(surface)
         if self.state == "DEATH":
+            text_surface = self.pop_up_font.render("YOU DIED!",True,(255,255,255))
+            surface.blit(text_surface,pygame.Vector2(1200/2,300)-pygame.Vector2(text_surface.get_width()/2,text_surface.get_height()/2))
             self.tr_bt_list[1].board(surface)
             self.tr_bt_list[2].board(surface)
 
@@ -573,40 +584,57 @@ class Wall:
 
 class Player_interface:
     def __init__(self):
+        #parametres for the bars are interface boxes are set
         self.health_bar_width = 500
         self.coin_icon_size = 30
         self.coin_bar_width = 150
         self.icon_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",25)
-
+        #images of the icons are uploaded and scaled 
         heart_bar = pygame.image.load("Textures/Interface/heart_bar.png")
         self.heart_bar_img = pygame.transform.smoothscale(heart_bar, (self.health_bar_width, self.health_bar_width/5))
+        #heart icon is loaded and scaled
         heart_icon = pygame.image.load("Textures/Interface/heart.png")
         self.heart_icon = pygame.transform.smoothscale(heart_icon, (self.health_bar_width/5.9, self.health_bar_width/8.5))
+        #coordinates of the heart bar are set
         self.health_bar_pos = pygame.Vector2(20,30)
+        #heart bar's
         self.health_bar_rect = pygame.Rect(self.health_bar_pos,(self.heart_bar_img.get_width(),self.heart_bar_img.get_height()))
-
         self.coin_icon = pygame.transform.smoothscale(coin, (self.coin_icon_size, self.coin_icon_size))
+        #coordinates of the coin counter are set
         self.coin_bar_pos = pygame.Vector2(20,150)
-        coin_bar = heart_icon = pygame.image.load("Textures/Interface/coin_bar.png")
+        #coin bar is loaded and scaled
+        coin_bar = pygame.image.load("Textures/Interface/coin_bar.png")
         self.coin_bar_icon = pygame.transform.smoothscale(coin_bar, (self.coin_bar_width,self.coin_bar_width/2))
+
+        
     
     def draw_interface(self,surface,hp_num,coin_num):
-        
+        #heart bar is displayed
         surface.blit(self.heart_bar_img,self.health_bar_rect)
+        #algorithm checks hp_num and displays a number of hearts
         for heart in range(0,hp_num):
+            #heart_pos is calculated and depending on the order of the heart, an offset is added
             heart_pos = self.health_bar_pos+pygame.Vector2(self.health_bar_width/17,self.health_bar_width/21.3)+pygame.Vector2(self.health_bar_width/5.6,0)*heart
+            #creates a rect, where the heart will be displayed
             heart_rect = pygame.Rect(heart_pos,(self.heart_icon.get_width(),self.heart_icon.get_height()))
+            #heart gets displayed
             surface.blit(self.heart_icon,heart_rect)
         
+        #coin bar is displayed
         surface.blit(self.coin_bar_icon,pygame.Rect(self.coin_bar_pos,(self.coin_bar_icon.get_width(),self.coin_bar_icon.get_height())))
+        #coin icon's position is calcualted
         coin_icon_rect = pygame.Rect(self.coin_bar_pos,(self.coin_icon_size,self.coin_icon_size))
         coin_icon_rect.center = self.coin_bar_pos+pygame.Vector2(self.coin_bar_width/4,self.coin_bar_icon.get_height()/2)
+        #coin icon is displayed
         surface.blit(self.coin_icon,coin_icon_rect)
-
+        #coin number is rendered
         coin_count_text = self.icon_font.render("x"+str(coin_num),True,(255,255,255))
+        #coin number's position is calculated
         coin_count_rect = pygame.Rect(self.coin_bar_pos,(coin_count_text.get_width(),coin_count_text.get_height()))
         coin_count_rect.center = self.coin_bar_pos+pygame.Vector2(self.coin_bar_icon.get_width()*0.7,self.coin_bar_icon.get_height()/2)
+        #coin number is displayed
         surface.blit(coin_count_text,coin_count_rect)
+
     
 class Turret:
     def __init__(self, x, y, tile_sizer,ranger,angle,bullet_list):
@@ -707,8 +735,8 @@ class Multi_Dir_Turret(Turret):
         else:
             self.current_time = time()
             self.round_delay_temp = self.round_delay
-        print("Constant:",self.round_delay)
-        print("Temp:",self.round_delay_temp)
+        # print("Constant:",self.round_delay)
+        # print("Temp:",self.round_delay_temp)
 
 class Projectile:
     def __init__(self, center_pos, angle, speed):
@@ -781,11 +809,12 @@ current_scene = 2
 run = True
 while run:
     scene = Window_list[current_scene]
+    scene.board(window)
     for event in pygame.event.get():
         if event.type == pygame.QUIT or scene.transition_to==100:
             run = False
         scene.event_enter(event)
-    scene.board(window)
+    
     pygame.display.update()
     #if the scene's paramtre tranistion_to is something, it transtions to other scene
     if scene.transition_to is not None:
