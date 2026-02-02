@@ -39,6 +39,12 @@ turret_bottom = pygame.image.load("Textures/Objects/Turrets/turret_bottom.png")
 turret_bottom = pygame.transform.smoothscale(turret_bottom, (tile_size, tile_size))
 multi_dir_turret = pygame.image.load("Textures/Objects/Turrets/multi_dir_turret.png")
 multi_dir_turret = pygame.transform.smoothscale(multi_dir_turret, (tile_size, tile_size))
+
+r_spikes = pygame.image.load("Textures/Objects/Spikes/retracted_spikes.png")
+r_spikes = pygame.transform.smoothscale(r_spikes, (tile_size, tile_size))
+spikes = pygame.image.load("Textures/Objects/Spikes/spikes.png")
+spikes = pygame.transform.smoothscale(spikes, (tile_size, tile_size))
+
 wall_sprite = pygame.image.load("Textures/Tiles/tiling_wall.png")
 wall_sprite = pygame.transform.smoothscale(wall_sprite, (tile_size, tile_size))
 
