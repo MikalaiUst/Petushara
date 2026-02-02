@@ -45,6 +45,11 @@ r_spikes = pygame.transform.smoothscale(r_spikes, (tile_size, tile_size))
 spikes = pygame.image.load("Textures/Objects/Spikes/spikes.png")
 spikes = pygame.transform.smoothscale(spikes, (tile_size, tile_size))
 
+fixed_machinery = pygame.image.load("Textures/Objects/Machinery/fixed_machinery.png")
+fixed_machinery = pygame.transform.smoothscale(fixed_machinery, (tile_size, tile_size))
+broken_machinery = pygame.image.load("Textures/Objects/Machinery/fixed_machinery.png")
+broken_machinery = pygame.transform.smoothscale(broken_machinery, (tile_size, tile_size))
+
 wall_sprite = pygame.image.load("Textures/Tiles/tiling_wall.png")
 wall_sprite = pygame.transform.smoothscale(wall_sprite, (tile_size, tile_size))
 
@@ -619,6 +624,15 @@ class Wall:
        
         # The tile_rect starts at the world position, but will be updated to screen position later
         self.tile_rect = pygame.Rect(self.world_x, self.world_y, tile_size, tile_size)
+
+class Machinery:
+    def __init__(self, x, y):
+        self.pos = pygame.Vector2(x,y)
+        self.loading = False
+        self.tile_rect = pygame.Rect(self.pos, (tile_size,tile_size))
+    def check_col(self,player_rect):
+        return self.rect.colliderect(player_rect)
+    
 
 class Player_interface:
     def __init__(self):
