@@ -13,6 +13,9 @@ projectile_size = 20
 coin_size = 50
 machinery_size = 200
 
+current_user = ""
+user_data = []
+
 window = pygame.display.set_mode((1200,800))
 title = pygame.display.set_caption("LogIn Screen")
 base_font = pygame.font.Font(None,56)
@@ -203,18 +206,28 @@ class LogInWindow(BaseWindow):
             if event.key == pygame.K_RETURN:
                 initial_user_data = {
                     "Password":password_field.user_text,
-                    "Username":username_field.user_text
+                    "Username":username_field.user_text,
+                    "Game_Saves":[{"Score":[0,0,0,0,0,0,0,0,0,0],"Time":[0,0,0,0,0,0,0,0,0,0],"Coins":[0,0,0,0,0,0,0,0,0,0]},
+                                  {"Score":[0,0,0,0,0,0,0,0,0,0],"Time":[0,0,0,0,0,0,0,0,0,0],"Coins":[0,0,0,0,0,0,0,0,0,0]},
+                                  {"Score":[0,0,0,0,0,0,0,0,0,0],"Time":[0,0,0,0,0,0,0,0,0,0],"Coins":[0,0,0,0,0,0,0,0,0,0]}]
+                    
                 }
                 filename = "game_saves/"+initial_user_data["Username"]+".json"
+                global current_user
+                global user_data
                 if not os.path.exists(filename):
                     self.active_message = "non_existant_username_message"
                     self.transition_to = 1
+                    
                     with open(filename, "w") as file:
                         json.dump(initial_user_data,file,indent = 4)
+                        current_user = username_field.user_text
                         file.close()
                 if os.path.exists(filename):
                     with open(filename, "r") as file:
+                        
                         user_data = json.load(file)
+                        current_user = username_field.user_text
                         self.transition_to = 1
 
 class TextArea:
@@ -463,13 +476,17 @@ class Level(BaseWindow):
             machine.tile_rect.topleft = machine.pos - offset
             surface.blit(machine.sprite,machine.tile_rect)
             #checks if this machine has been repaired
-            if machine.fixed == False:
-                if machine.check_col(self.player_rect):
-                    #fix function is called
-                    machine.fix(surface)
+            if machine.active:
+                if machine.fixed == False:
+                    if machine.check_col(self.player_rect):
+                        #fix function is called
+                        machine.fix(surface)
+                    else:
+                        #resets the progress if player is outide of the collision rectangle
+                        machine.progress = 0
                 else:
-                    #resets the progress if player is outide of the collision rectangle
-                    machine.progress = 0
+                    machine.active = False
+                    self.machinery_num+=1
         
         #game checks if the time limit was reached
         if self.cur_time<=self.time_limit:
@@ -542,6 +559,7 @@ class Level(BaseWindow):
                 for button in self.tr_bt_list:
                     res = button.event_enter(event)
                     if res != None:
+
                         self.lvl_reset()
                         self.transition_to = res
                         break
@@ -645,6 +663,7 @@ class Machinery:
         self.pos = pygame.Vector2(x,y)+pygame.Vector2(tile_size/2,tile_size/2)-pygame.Vector2(machinery_size/2,machinery_size/2)
         #variables that
         self.fixed = False
+        self.active = True
         self.sprite = broken_machinery
         #stores the progress of fixing
         self.progress = 0
@@ -945,6 +964,8 @@ Window_list = [LogIn_Screen,MainMenu_Screen,Level_1,Level_2]
 
 #this variable defines which scene is currently active (0 = LogIn, 1 = MainMenu, 2 = Level_1, etc.)
 current_scene = 2
+
+
 
 run = True
 while run:
