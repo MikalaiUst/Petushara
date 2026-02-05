@@ -49,6 +49,14 @@ fixed_machinery = pygame.transform.smoothscale(fixed_machinery, (machinery_size,
 broken_machinery = pygame.image.load("Textures/Objects/Machinery/broken_machinery.png")
 broken_machinery = pygame.transform.smoothscale(broken_machinery, (machinery_size, machinery_size))
 
+retracted_spikes = pygame.image.load("Textures/Objects/Spikes/retracted_spikes.png")
+retracted_spikes = pygame.transform.smoothscale(retracted_spikes, (tile_size, tile_size))
+normal_spikes = pygame.image.load("Textures/Objects/Spikes/spikes.png")
+normal_spikes = pygame.transform.smoothscale(normal_spikes, (tile_size, tile_size))
+
+spike_overlay = pygame.image.load("Textures/Objects/Spikes/overlay.png")
+spike_overlay = pygame.transform.smoothscale(spike_overlay, (tile_size, tile_size))
+
 wall_sprite = pygame.image.load("Textures/Tiles/tiling_wall.png")
 wall_sprite = pygame.transform.smoothscale(wall_sprite, (tile_size, tile_size))
 
@@ -124,10 +132,6 @@ class Message: #Logic for the pop up messages
         #method used to calculate the width of instantiated text
         return self.font.render(text,True,(100,100,100)).get_width()
    
-
-
-
-
     def board(self, surface):
         #textbox is created with borderlines
         pygame.draw.rect(surface, (255,255,255), self.coords)
@@ -146,9 +150,6 @@ class Message: #Logic for the pop up messages
             surface.blit(pygame.transform.smoothscale(no_box, (self.button_2_param.width, self.button_2_param.height)), (self.button_2_param.x,self.button_2_param.y))
         elif self.is_choice == False:
             surface.blit(pygame.transform.smoothscale(okay_box, (self.button_1_param.width, self.button_1_param.height)), (self.button_1_param.x,self.button_1_param.y))
-           
-
-
 
 
     def event_enter(self, event):
@@ -401,6 +402,7 @@ class Level(BaseWindow):
         self.active_projectiles = []
         self.active_coins =[]
         self.machinery = []
+        self.spikes = []
         self.perm_coins = []
         row_num = 0
         for line in file.readlines():
@@ -429,6 +431,8 @@ class Level(BaseWindow):
                 if element =="8":
                     self.machinery.append(Machinery(x_pos,y_pos))
                     self.max_machinery += 1
+                if element == "9":
+                    self.spikes.append(Timed_Spike(x_pos,y_pos,2,2))
                 element_num += 1
             row_num += 1
             
@@ -472,6 +476,14 @@ class Level(BaseWindow):
             if cur_coin.check_col(self.player_rect):
                 self.coin_num+=1
                 self.active_coins.remove(cur_coin)
+        
+        for spike in self.spikes:
+            offset = pygame.Vector2(self.offset_x,self.offset_y)
+            spike.tile_rect.topleft = spike.pos - offset
+            surface.blit(spike.sprite,spike.tile_rect)
+            spike.cooldown(surface,offset)
+            self.hp_num -= spike.hit(self.player_rect)
+            
         
         for machine in self.machinery:
             #offset is calculated and added
@@ -562,7 +574,7 @@ class Level(BaseWindow):
                     res = button.event_enter(event)
                     if res != None:
                         old_score = user_data["Game_Saves"][current_save]["Score"][self.cur_lvl]
-                        if 5 < self.score:
+                        if old_score < self.score:
                             user_data["Game_Saves"][current_save]["Score"][self.cur_lvl] = self.score
                             user_data["Game_Saves"][current_save]["Time"][self.cur_lvl] = round(self.cur_time,1)
                             user_data["Game_Saves"][current_save]["Coins"][self.cur_lvl] = self.coin_num
@@ -583,6 +595,10 @@ class Level(BaseWindow):
         self.cur_time = 0
         self.score = 0
         self.state = "ACTIVE"
+        for spike in self.spikes:
+            spike.cur_time = 0
+            spike.sprite = retracted_spikes
+            spike.ready = False
         #all currently active projectiles are destroyed
         self.active_projectiles.clear()
         #turret's cooldown times are set to default
@@ -615,7 +631,6 @@ class Level(BaseWindow):
             surface.blit(text_surface,pygame.Vector2(1200/2,300)-pygame.Vector2(text_surface.get_width()/2,text_surface.get_height()/2))
             self.tr_bt_list[1].board(surface)
             self.tr_bt_list[2].board(surface)
-
 
 
     def movement(self):
@@ -692,8 +707,71 @@ class Machinery:
                 self.fixed = True
                 self.sprite = fixed_machinery
 
-    
+class Spike:
+    def __init__(self, x, y,reset_time,active_time):
+        self.pos = pygame.Vector2(x,y)
+        self.tile_rect = pygame.Rect(self.pos, (tile_size,tile_size))
+        self.reset_time = reset_time
+        self.cur_time = 0
+        self.sprite = retracted_spikes
+        self.active_time = active_time
+        self.ready = True
+        self.activated = True
+    def hit(self,player_rect):
+        if self.ready and self.tile_rect.colliderect(player_rect):
+            self.cur_time = 0
+            self.sprite = retracted_spikes
+            self.ready = False
+            return 1
+        else:
+            return 0
 
+    def cooldown(self,surface,offset):
+        if self.cur_time < self.reset_time:
+            self.cur_time += clock.get_time()/1000
+            self.sprite = retracted_spikes
+            completenes = ((self.reset_time-self.cur_time)/self.reset_time)
+            w = int(tile_size * completenes)
+            overlay_part = spike_overlay.subsurface(pygame.Rect(0, 0, w, tile_size))
+            surface.blit(overlay_part, self.tile_rect.topleft)
+        else:
+            self.sprite = normal_spikes
+            self.ready=True
+            
+class Timed_Spike(Spike):
+    def hit(self,player_rect):
+        if self.ready and self.activated and self.tile_rect.colliderect(player_rect):
+            self.cur_time = 0
+            self.ready = False
+            self.sprite = retracted_spikes
+            return 1
+        else:
+            return 0
+    def cooldown(self,surface,offset):
+        self.cur_time += clock.get_time()/1000
+        if self.cur_time >= self.reset_time:
+            self.ready = True
+            self.sprite = normal_spikes
+            if self.cur_time > self.reset_time+self.active_time:
+                self.cur_time = 0
+                print("bem bem bem")
+                self.ready = False
+                self.sprite = retracted_spikes
+        else:
+            completenes = ((self.reset_time-self.cur_time)/self.reset_time)
+            w = int(tile_size * completenes)
+            if w > 0:
+                overlay_part = spike_overlay.subsurface(pygame.Rect(0, 0, w, tile_size))
+                surface.blit(overlay_part, self.tile_rect.topleft)
+
+class Trigger_Spike(Spike):
+    def hit(self,player_rect):
+        if self.ready and self.tile_rect.colliderect(player_rect):
+            self.cur_time = 0
+            self.ready = False
+            return 0
+        else:
+            return 0
 class Player_interface:
     def __init__(self):
         #parametres for the bars are interface boxes are set
@@ -972,7 +1050,7 @@ Level_2 = Level("level_2",3,30,2000)              #placeholder for the first lev
 Window_list = [LogIn_Screen,MainMenu_Screen,Level_1,Level_2]
 
 #this variable defines which scene is currently active (0 = LogIn, 1 = MainMenu, 2 = Level_1, etc.)
-current_scene = 0
+current_scene = 2
 
 
 
