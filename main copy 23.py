@@ -524,7 +524,7 @@ class Level(BaseWindow):
             self.state = "DEATH"
             #variables "active" is set to be false, so the player can't exit this screen
             self.active = False
-        if self.coin_num == 17:
+        if self.machinery_num == self.max_machinery:
             self.state = "WON"
             self.active = False
         #if the game is not active, the pop Up Screen is shown

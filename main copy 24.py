@@ -1074,9 +1074,7 @@ Level_2 = Level("level_2",3,30,2000)              #placeholder for the first lev
 Window_list = [LogIn_Screen,MainMenu_Screen,Level_1,Level_2]
 
 #this variable defines which scene is currently active (0 = LogIn, 1 = MainMenu, 2 = Level_1, etc.)
-current_scene = 2
-
-
+current_scene = 0
 
 run = True
 while run:
