@@ -516,7 +516,7 @@ class Level(BaseWindow):
         self.score = self.def_score + self.coin_num*self.coin_reward - (5-self.hp_num)*self.hp_penalty - time_penalty
         self.score = self.score - self.score%5
 
-        self.player_interface.draw_interface(surface,self.hp_num,self.coin_num,int(self.score),self.cur_time,self.time_limit)
+        self.player_interface.draw_interface(surface,self.hp_num,self.coin_num,int(self.score),self.machinery_num,self.max_machinery,self.cur_time,self.time_limit)
 
         #Checks if the player had lost all of his health points
         if self.hp_num < 1:
@@ -785,10 +785,13 @@ class Player_interface:
         self.coin_bar_width = 150
         self.time_bar_width = 210
         self.score_bar_width = 200
+        self.machine_icon_size = 50
+        self.machine_bar_width = 160
 
         self.icon_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",25)
         self.time_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",30)
         self.time_limit_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",15)
+        self.machine_num_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",20)
         self.score_font = pygame.font.Font("Textures\Fonts\PixelOperator-Bold.ttf",25)
         
         #images of the icons are uploaded and scaled 
@@ -822,8 +825,13 @@ class Player_interface:
         score_bar = pygame.image.load("Textures/Interface/score_bar.png")
         self.score_bar_icon = pygame.transform.smoothscale(score_bar, (self.score_bar_width,self.score_bar_width/2))
 
+        self.machine_bar_pos = pygame.Vector2(20,230)
+        self.machine_icon = pygame.transform.smoothscale(fixed_machinery, (self.machine_icon_size,self.machine_icon_size))
+        self.machine_bar_icon = pygame.transform.smoothscale(coin_bar, (self.machine_bar_width,self.machine_bar_width/2.5))
+        
 
-    def draw_interface(self,surface,hp_num,coin_num,score,timer,time_limit):
+
+    def draw_interface(self,surface,hp_num,coin_num,score,machine_count,max_machine,timer,time_limit):
         #heart bar is displayed
         surface.blit(self.heart_bar_img,self.health_bar_rect)
         #algorithm checks hp_num and displays a number of hearts
@@ -850,6 +858,17 @@ class Player_interface:
         coin_count_rect.center = self.coin_bar_pos+pygame.Vector2(self.coin_bar_icon.get_width()*0.7,self.coin_bar_icon.get_height()/2)
         #coin number is displayed
         surface.blit(coin_count_text,coin_count_rect)
+
+        surface.blit(self.machine_bar_icon,self.machine_bar_pos)
+        machine_icon_rect = pygame.Rect(self.machine_bar_pos,(self.machine_icon_size,self.machine_icon_size))
+        machine_icon_rect.center = self.machine_bar_pos+pygame.Vector2(self.machine_bar_icon.get_width()/1.33,self.machine_bar_icon.get_height()/2)
+        surface.blit(self.machine_icon,machine_icon_rect)
+
+
+        machine_num_text = self.machine_num_font.render(str(machine_count)+"/"+str(max_machine),True,(255,255,255))
+        machine_num_rect = pygame.Rect(self.machine_bar_pos,(machine_num_text.get_width(),machine_num_text.get_height()))
+        machine_num_rect.center = self.machine_bar_pos+pygame.Vector2(self.machine_bar_icon.get_width()/4,self.machine_bar_icon.get_height()/2)
+        surface.blit(machine_num_text,machine_num_rect)
 
         #score bar is displayed
         surface.blit(self.score_bar_icon,self.score_bar_pos)
