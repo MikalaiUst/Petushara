@@ -80,6 +80,9 @@ class BaseWindow: # Base class used for all window screens in the program
     def event_enter(self, event):
         pass
 
+    def on_enter(self):
+        pass
+
 class Message: #Logic for the pop up messages
     def __init__(self,coords:pygame.Rect,button_param,text,is_choice,padding,font_size):
         #sizes of buttons are created in here. They must be the same to not confuse the user
@@ -1056,9 +1059,54 @@ class Coins:
         self.pos=pygame.Vector2(x,y)+pygame.Vector2(tile_size/2,tile_size/2)-pygame.Vector2(coin_size/2,coin_size/2)
         self.rect = pygame.Rect(self.pos, (coin_size, coin_size))
         self.value = 1
-        
     def check_col(self,player_rect):
         return self.rect.colliderect(player_rect)
+
+class LeaderBoard(BaseWindow):
+    def __init__(self):
+        self.player_list = []
+        pass
+
+    def board(self,surface):
+        surface.fill((255,255,255))
+        print(self.player_list)
+
+    def on_enter(self):
+        for filename in os.listdir("game_saves"):
+            with open("game_saves/"+filename,"r") as file:
+                player_info = json.load(file)
+                info_list = []
+                player_name = filename[:-5]
+                print(player_name)
+                for save in player_info["Game_Saves"]:
+                    total_score = sum(save["Score"])
+                    total_coins = sum(save["Coins"])
+                    info_list.append((player_name,total_score,total_coins))
+                info_list = self.bubble_sort(info_list,1)
+                self.player_list.append(info_list[0])
+        self.player_list = self.bubble_sort(self.player_list,1)
+
+                    
+
+    def bubble_sort(self,list_to_sort,sii):
+        length = len(list_to_sort)
+        for i in range(length-1):
+            swapped = False
+            for j in range(length-i-1):
+                if list_to_sort[j][sii] < list_to_sort[j+1][sii]:
+                    temp = list_to_sort[j]
+                    list_to_sort[j] = list_to_sort[j+1]
+                    list_to_sort[j+1] = temp
+                    swapped = True
+            if not swapped:
+                break
+        return list_to_sort
+
+
+
+
+
+
 
 
 #textfield objects are created for username and password input
@@ -1071,10 +1119,11 @@ LogIn_Screen = LogInWindow()       #login screen with username/password fields a
 MainMenu_Screen = MainMenuWindow() #main menu where user chooses what to do next
 Level_1 = Level("level_1",2,100,2000)
 Level_2 = Level("level_2",3,30,2000)              #placeholder for the first level of the game
-Window_list = [LogIn_Screen,MainMenu_Screen,Level_1,Level_2]
+Leader_Board = LeaderBoard()
+Window_list = [LogIn_Screen,MainMenu_Screen,Level_1,Level_2,Leader_Board]
 
 #this variable defines which scene is currently active (0 = LogIn, 1 = MainMenu, 2 = Level_1, etc.)
-current_scene = 0
+current_scene = 1
 
 run = True
 while run:
@@ -1089,6 +1138,8 @@ while run:
     #if the scene's paramtre tranistion_to is something, it transtions to other scene
     if scene.transition_to is not None:
         current_scene = scene.transition_to
+        scene = Window_list[current_scene]
+        scene.on_enter()
         scene.transition_to = None
     clock.tick(60)
 pygame.quit()
