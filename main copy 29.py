@@ -221,7 +221,7 @@ class LogInWindow(BaseWindow):
                 global current_user,user_data,current_save
                 if not os.path.exists(filename):
                     self.active_message = "non_existant_username_message"
-                    self.transition_to = 1
+                    self.transition_to = 11
                     
                     with open(filename, "w") as file:
                         initial_user_data = {
@@ -241,7 +241,7 @@ class LogInWindow(BaseWindow):
                         user_data = json.load(file)
                         current_save = user_data["Last_Save"]
                         current_user = username_field.user_text
-                        self.transition_to = 1
+                        self.transition_to = 11
 
 class TextArea:
 
@@ -298,9 +298,9 @@ class MainMenuWindow(BaseWindow):
     def __init__(self):
         #buttons are declared and stored in a list
         self.button_list = [
-            TranstionButton("Textures/Buttons/levels.png",pygame.Rect(400,225,400,150),2),
-            TranstionButton("Textures/Buttons/leaderboard.png",pygame.Rect(400,425,400,150),3),
-            TranstionButton("Textures/Buttons/save_files.png",pygame.Rect(400,600,400,150),4)
+            TranstionButton("Textures/Buttons/levels.png",pygame.Rect(400,225,400,150),12),
+            TranstionButton("Textures/Buttons/leaderboard.png",pygame.Rect(400,425,400,150),13),
+            TranstionButton("Textures/Buttons/save_files.png",pygame.Rect(400,600,400,150),14)
         ]
     def board(self,surface):
         surface.blit(background, (0, 0))
@@ -1065,7 +1065,7 @@ class Coins:
 
 class LeaderBoard(BaseWindow):
     def __init__(self):
-        self.return_button = TranstionButton("Textures/Buttons/return_button.png",pygame.Rect(20,700,120,60),1)
+        self.return_button = TranstionButton("Textures/Buttons/return_button.png",pygame.Rect(20,700,120,60),11)
         self.table = []
         self.line_width = 900
         self.table_pos = pygame.Vector2(600-self.line_width/2,170)
@@ -1184,7 +1184,7 @@ class SaveMenu(BaseWindow):
         self.box_height = self.box_width*0.25
         self.list_pos = pygame.Vector2(600-self.box_width/2,170)
         self.offset = 45
-        self.return_button = TranstionButton("Textures/Buttons/return_button.png",pygame.Rect(20,700,120,60),1)
+        self.return_button = TranstionButton("Textures/Buttons/return_button.png",pygame.Rect(20,700,120,60),11)
 
         self.save_button_list = []
 
@@ -1330,6 +1330,7 @@ class LevelButton:
     
     def event_enter(self,event):
         if event.type == pygame.MOUSEBUTTONDOWN and self.coords.collidepoint(pygame.mouse.get_pos()):
+            print(self.index-1)
             return self.index-1
         return None
 
@@ -1342,15 +1343,21 @@ textfield_list = [password_field,username_field]
 
 LogIn_Screen = LogInWindow()       #login screen with username/password fields and messages
 MainMenu_Screen = MainMenuWindow() #main menu where user chooses what to do next
-Level_1 = Level("level_1",2,100,2000)
-Level_2 = Level("level_2",3,30,2000)              #placeholder for the first level of the game
-
-
+Level_1 = Level("level_1",1,100,2000)
+Level_2 = Level("level_2",2,30,2000)
+Level_3 = Level("level_3",3,100,2000)
+Level_4 = Level("level_4",4,30,2000)
+Level_5 = Level("level_5",5,100,2000)
+Level_6 = Level("level_6",6,30,2000)
+Level_7 = Level("level_7",7,100,2000)
+Level_8 = Level("level_8",8,30,2000)
+Level_9 = Level("level_9",9,100,2000)
+Level_10 = Level("level_10",10,30,2000)
 Leader_Board = LeaderBoard()
 Save_Menu = SaveMenu()
 Level_Menu = LevelMenu()
 
-Window_list = [LogIn_Screen,MainMenu_Screen,Level_Menu,Save_Menu,Leader_Board]
+Window_list = [LogIn_Screen,Level_1,Level_2,Level_3,Level_4,Level_5,Level_6,Level_7,Level_8,Level_9,Level_10,MainMenu_Screen,Level_Menu,Save_Menu,Leader_Board]
 
 #this variable defines which scene is currently active (0 = LogIn, 1 = MainMenu, 2 = Level_1, etc.)
 current_scene = 0
