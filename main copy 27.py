@@ -69,6 +69,7 @@ unnselected_save = pygame.image.load("Textures/Buttons/Saves/unselected_save.png
 
 
 leader_line = pygame.image.load("Textures/Buttons/leader_line.png")
+level_button = pygame.image.load("Textures/Buttons/level_button.png")
 
 class BaseWindow: # Base class used for all window screens in the program
     # Variable that stores which scene/window the program should switch to next
@@ -1226,7 +1227,7 @@ class SaveMenu(BaseWindow):
             if i == current_save:
                 button.set_selected(True)
 
-                
+
 class SaveButton:
     save_num_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",75)
     score_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",35)
@@ -1260,6 +1261,71 @@ class SaveButton:
             self.sprite = self.selected_save_sprite  
         else: 
             self.sprite = self.unselected_save_sprite
+
+class LevelMenu(BaseWindow):
+    def __init__(self):
+        self.pos = pygame.Vector2(0,0)
+
+        self.button_width = 400
+        self.button_height = self.button_width*0.25
+
+        self.offset = 30
+        self.level_button_list = []
+        
+        for i in range(0,10):
+            if i < 5:
+                bt_pos = self.pos +pygame.Vector2(0,self.button_height+self.offset)*i
+            else:
+                bt_pos = pygame.Vector2(800,self.pos.y)-pygame.Vector2(self.pos.x,0)-pygame.Vector2(self.button_height,0)+pygame.Vector2(0,self.button_height+self.offset)*i
+            self.level_button_list.append(LevelButton(bt_pos,self.button_width,self.button_height,i+1))
+    
+    def board(self,surface):
+        surface.blit(background, (0, 0))
+        for button in self.level_button_list:
+            button.draw_button(surface)
+
+    def on_enter(self):
+        global user_data
+        global current_save
+        
+        for i in range(0,10):
+            button = self.level_button_list[i]
+            button.score = user_data["Game_Saves"][current_save]["Score"][i]
+            button.coins = user_data["Game_Saves"][current_save]["Coins"][i]
+            button.time = user_data["Game_Saves"][current_save]["Time"][i]
+
+    pass
+
+class LevelButton:
+    index_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",55)
+    info_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",15)
+    def __init__(self,pos,width,height,index):
+        self.width = width
+        self.height = height
+
+        self.coords = pygame.Rect(pos, (width,height))
+        self.sprite = pygame.transform.smoothscale(level_button, (self.coords.width, self.coords.height))
+
+        self.index = index
+        self.score = 0
+        self.coins = 0
+        self.time = 0
+
+    def draw_button(self,surface):
+        surface.blit(self.sprite,self.coords)
+
+        index_txt = self.index_font.render(str(self.index),True,(85,135,180))
+        score_txt = self.info_font.render(str(self.score),True,(85,135,180))
+        coins_txt = self.info_font.render(str(self.coins),True,(85,135,180))
+        time_txt = self.info_font.render(str(self.time),True,(85,135,180))
+
+        surface.blit(index_txt,self.coords.topleft+pygame.Vector2(self.width*0.1,self.height*0.6)-pygame.Vector2(index_txt.get_width(),index_txt.get_height())/2)
+        surface.blit(score_txt,self.coords.topleft+pygame.Vector2(self.width*0.6,self.height*0.25)-pygame.Vector2(score_txt.get_width(),score_txt.get_height())/2)
+        surface.blit(coins_txt,self.coords.topleft+pygame.Vector2(self.width*0.6,self.height*0.45)-pygame.Vector2(coins_txt.get_width(),coins_txt.get_height())/2)
+        surface.blit(time_txt,self.coords.topleft+pygame.Vector2(self.width*0.6,self.height*0.65)-pygame.Vector2(time_txt.get_width(),time_txt.get_height())/2)
+
+
+
         
 
 
@@ -1273,9 +1339,13 @@ LogIn_Screen = LogInWindow()       #login screen with username/password fields a
 MainMenu_Screen = MainMenuWindow() #main menu where user chooses what to do next
 Level_1 = Level("level_1",2,100,2000)
 Level_2 = Level("level_2",3,30,2000)              #placeholder for the first level of the game
+
+
 Leader_Board = LeaderBoard()
 Save_Menu = SaveMenu()
-Window_list = [LogIn_Screen,MainMenu_Screen,Level_1,Save_Menu,Leader_Board]
+Level_Menu = LevelMenu()
+
+Window_list = [LogIn_Screen,MainMenu_Screen,Level_Menu,Save_Menu,Leader_Board]
 
 #this variable defines which scene is currently active (0 = LogIn, 1 = MainMenu, 2 = Level_1, etc.)
 current_scene = 0
