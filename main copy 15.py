@@ -362,7 +362,6 @@ class Level(BaseWindow):
         self.world_turrets = []
         self.active_projectiles = []
         self.active_coins =[]
-        self.perm_coins = []
         row_num = 0
        
         for line in file.readlines():
@@ -381,11 +380,8 @@ class Level(BaseWindow):
                     self.offset_y = y_pos*tile_size-self.surface_height/2
                 if element == "4":
                     self.active_coins.append(Coins(x_pos,y_pos))
-                    self.perm_coins.append(Coins(x_pos,y_pos))
                 if element == "5":
                     self.world_turrets.append(Turret(x_pos,y_pos,tile_size,500,45,self.active_projectiles))
-                if element == "6":
-                    self.world_turrets.append(Multi_Dir_Turret(x_pos,y_pos,tile_size,500,45,self.active_projectiles))
                 if element == "7":
                     self.active_projectiles.append(Rose_Projectile(pygame.Vector2(x_pos,y_pos),0,10))
                 element_num += 1
@@ -430,6 +426,12 @@ class Level(BaseWindow):
                 self.coin_num+=1
                 self.active_coins.remove(cur_coin)
         self.player_interface.draw_interface(surface,self.hp_num,self.coin_num)
+
+
+
+
+
+
 
         #Checks if the player had lost all of his health points
         if self.hp_num < 1:
@@ -573,28 +575,37 @@ class Wall:
 
 class Player_interface:
     def __init__(self):
+        # parametres for the bars are interface boxes are set
         self.health_bar_width = 500
         self.coin_icon_size = 30
         self.coin_bar_width = 150
+        # fonts are created
         self.icon_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",25)
+        # images of the icons are uploaded and scaled 
 
+        # heart bar and individual heart get loaded and scaled
         heart_bar = pygame.image.load("Textures/Interface/heart_bar.png")
         self.heart_bar_img = pygame.transform.smoothscale(heart_bar, (self.health_bar_width, self.health_bar_width/5))
+
         heart_icon = pygame.image.load("Textures/Interface/heart.png")
         self.heart_icon = pygame.transform.smoothscale(heart_icon, (self.health_bar_width/5.9, self.health_bar_width/8.5))
         self.health_bar_pos = pygame.Vector2(20,30)
         self.health_bar_rect = pygame.Rect(self.health_bar_pos,(self.heart_bar_img.get_width(),self.heart_bar_img.get_height()))
-
+        # coin icon and coin bar gets loaded and scaled
         self.coin_icon = pygame.transform.smoothscale(coin, (self.coin_icon_size, self.coin_icon_size))
-        self.coin_bar_pos = pygame.Vector2(20,150)
+        self.coin_bar_pos = pygame.Vector2(1000,30)
         coin_bar = heart_icon = pygame.image.load("Textures/Interface/coin_bar.png")
         self.coin_bar_icon = pygame.transform.smoothscale(coin_bar, (self.coin_bar_width,self.coin_bar_width/2))
     
     def draw_interface(self,surface,hp_num,coin_num):
-        
+        # heart bar gets drawn
         surface.blit(self.heart_bar_img,self.health_bar_rect)
+        # each individual heart gets drawn
         for heart in range(0,hp_num):
-            heart_pos = self.health_bar_pos+pygame.Vector2(self.health_bar_width/17,self.health_bar_width/21.3)+pygame.Vector2(self.health_bar_width/5.6,0)*heart
+            # offset is added each heart gets drawn in the correct place
+            heart_pos = self.health_bar_pos+pygame.Vector2(self.health_bar_width/17,self.health_bar_width/21.3)+pygame.Vector2(
+                self.health_bar_width/5.6,0)*heart
+            # heart coordinates are calculated and individual heart gets drawn in correct place
             heart_rect = pygame.Rect(heart_pos,(self.heart_icon.get_width(),self.heart_icon.get_height()))
             surface.blit(self.heart_icon,heart_rect)
         
@@ -756,6 +767,7 @@ class Spiral_Projectile(Projectile):
 
 class Coins:
     def __init__(self, x, y):
+        # coin pos in the center of the tile
         self.pos=pygame.Vector2(x,y)+pygame.Vector2(tile_size/2,tile_size/2)-pygame.Vector2(coin_size/2,coin_size/2)
         self.rect = pygame.Rect(self.pos, (coin_size, coin_size))
         self.value = 1

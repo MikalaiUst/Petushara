@@ -42,10 +42,7 @@ class BaseWindow: # Base class used for all window screens in the program
     def board(self,surface):
         pass
     #any kind of events like mouse click or key press will be dealt with in this method
-
-
-
-
+    
     def event_enter(self, event):
         pass
 

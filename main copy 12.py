@@ -392,7 +392,7 @@ class Level(BaseWindow):
             if cur_coin.check_col(self.player_rect):
                 self.coin_num+=1
                 self.coins.remove(cur_coin)
-        self.player_interface.draw_interface(surface,self.hp_num,self.coin_num)
+        # self.player_interface.draw_interface(surface,self.hp_num,self.coin_num)
     def event_enter(self, event :pygame.event):
         pass #66666666666666666666777777777777777777777777777.44444444444444444411111111111111111111111.66666666666666666666111111111111111111.2222222222222222222222
     def movement(self):
@@ -475,20 +475,25 @@ class Player_interface:
 
 class Turret:
     def __init__(self, x, y, tile_sizer,ranger,angle,bullet_list):
+        # position, size and angle are set
         self.pos = pygame.Vector2(x,y)
         self.tile_size = tile_sizer
         self.angle = angle
+        # range is set
         self.shoot_range = ranger
+        # state of the turret, inactive by default
         self.state = "INACTIVE"
+
+        # bullet list to which projectiles get added
         self.bullet_list = bullet_list
 
+        # time variab;les are set
         self.current_time = 0
-        self.theta = 0
-        self.shoot_delay = 0.05
+        self.shoot_delay = 0.5
         self.shoot_num = 7
         self.round_delay = 2
         self.round_delay_temp = self.round_delay
-        
+
         self.shoot_point = pygame.Vector2(0,0)
         self.rect = pygame.Rect(x, y, tile_size,tile_size)
         
@@ -511,17 +516,20 @@ class Turret:
         surface.blit(rotated_image, new_rect)
         # pygame.draw.line(surface,(255,255,255),new_rect.center,self.shoot_point,3)
 
-        self.theta +=5
 
     def check_collision(self,player_x,player_y,player_d,offset):
+        # midpoint is calculated
         player_x = player_x+player_d/2
         player_y = player_y + player_d/2
+        # circle coordinates are calculated
         circle_pos = self.pos+pygame.Vector2(tile_size,tile_size)/2-offset
         pos_dif = circle_pos - pygame.Vector2(player_x,player_y)
+        # circle is drawn
         pygame.draw.circle(window,(255,0,0),circle_pos,self.shoot_range,20)
-        # pygame.draw.line(window,(200,200,200),pygame.Vector2(player_x,player_y),circle_pos,3)
+
+        # if player enters the circle
         if pos_dif.length()<=player_d/2+self.shoot_range:
-            # print("this player is entering the circle")
+            # when player enters the range, the timer gets reset to current time so cycle starts from the beginning
             if self.state == "INACTIVE":
                 self.current_time = time()
                 print(self.current_time)
@@ -531,23 +539,26 @@ class Turret:
             self.state = "INACTIVE"
             self.round_delay_temp=self.round_delay
             return False
+        
     def shoot(self):
+        # total cycle time is calculated
         cycle_time = self.round_delay+self.shoot_delay*self.shoot_num
+        # current time difference is obtained
         time_var=time()-self.current_time
-
+        # checks if the total time went past
         if time_var<=cycle_time:
+            # checks if the round delay went past
             if time_var>self.round_delay_temp:
+                # angle is calculated in radians
                 angle_rad = self.angle*pi/180
-                self.bullet_list.append(Oscilating_Projectile(self.shoot_point,-angle_rad,4))
-                print("SHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOTTTTTTTTTTTTTTTTTTTTTTTTTTT")
+                # new bullet is added to the list
+                self.bullet_list.append(Oscilating_Projectile(self.shoot_point,-angle_rad,1))
+                # round delay is increased by the shoot delay
                 self.round_delay_temp += self.shoot_delay
         else:
+            # when system complets one cycle, time is reset
             self.current_time = time()
             self.round_delay_temp = self.round_delay
-        print("Constant:",self.round_delay)
-        print("Temp:",self.round_delay_temp)
-    def target():
-        pass
 
 class Projectile:
     def __init__(self, center_pos, angle, speed):
@@ -555,7 +566,7 @@ class Projectile:
         self.angle = angle
         self.speed = speed
         self.theta = 0
-        self.theta_increase = 1/10
+        self.theta_increase = 1/100
         self.rect = pygame.Rect(0, 0, projectile_size, projectile_size)
         self.rect.center = self.space_pos
     def velocity(self):

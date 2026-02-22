@@ -1,12 +1,12 @@
 {
-  "Password": "123456789",
-  "Username": "Sin_shliuhi",
+  "Password": "dfytgyj",
+  "Username": "swerth",
   "Game_Saves": [
     {
       "Score": [
         0,
         0,
-        5800,
+        0,
         0,
         0,
         0,
@@ -18,7 +18,7 @@
       "Time": [
         0,
         0,
-        17.4,
+        0,
         0,
         0,
         0,
@@ -30,7 +30,7 @@
       "Coins": [
         0,
         0,
-        20,
+        0,
         0,
         0,
         0,
@@ -117,5 +117,6 @@
       ]
     }
   ],
-  "Last Save": 0
+  "Last Save": 0,
+  "Last_save": 1
 }

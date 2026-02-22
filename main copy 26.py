@@ -20,7 +20,7 @@ current_save = 0
 window = pygame.display.set_mode((1200,800))
 title = pygame.display.set_caption("LogIn Screen")
 base_font = pygame.font.Font(None,56)
-title_font = pygame.font.Font(None,120)
+title_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",60)
 background = pygame.image.load("Textures/Backgrounds/LogIn.png")
 background = pygame.transform.smoothscale(background, (1200, 800))
 field_pic = pygame.image.load("Textures/Buttons/text_field.png")
@@ -64,6 +64,12 @@ coin = pygame.image.load("Textures/Objects/Coins/coin.png")
 coin = pygame.transform.smoothscale(coin, (coin_size, coin_size))
 
 
+selected_save = pygame.image.load("Textures/Buttons/Saves/selected_save.png")
+unnselected_save = pygame.image.load("Textures/Buttons/Saves/unselected_save.png")
+
+
+leader_line = pygame.image.load("Textures/Buttons/leader_line.png")
+
 class BaseWindow: # Base class used for all window screens in the program
     # Variable that stores which scene/window the program should switch to next
     transition_to = None
@@ -78,6 +84,9 @@ class BaseWindow: # Base class used for all window screens in the program
 
     #any kind of events like mouse click or key press will be dealt with in this method
     def event_enter(self, event):
+        pass
+    # algorithms that had to be performed onnly once are added here
+    def on_enter(self):
         pass
 
 class Message: #Logic for the pop up messages
@@ -220,7 +229,7 @@ class LogInWindow(BaseWindow):
                             "Game_Saves":[{"Score":[0,0,0,0,0,0,0,0,0,0],"Time":[0,0,0,0,0,0,0,0,0,0],"Coins":[0,0,0,0,0,0,0,0,0,0]},
                                           {"Score":[0,0,0,0,0,0,0,0,0,0],"Time":[0,0,0,0,0,0,0,0,0,0],"Coins":[0,0,0,0,0,0,0,0,0,0]},
                                           {"Score":[0,0,0,0,0,0,0,0,0,0],"Time":[0,0,0,0,0,0,0,0,0,0],"Coins":[0,0,0,0,0,0,0,0,0,0]}],
-                            "Last Save":0
+                            "Last_Save":0
                         }
                         json.dump(initial_user_data,file,indent = 4)
                         current_user = username_field.user_text
@@ -229,7 +238,7 @@ class LogInWindow(BaseWindow):
                     with open(filename, "r") as file:
                         
                         user_data = json.load(file)
-                        current_save = user_data["Last Save"]
+                        current_save = user_data["Last_Save"]
                         current_user = username_field.user_text
                         self.transition_to = 1
 
@@ -290,7 +299,7 @@ class MainMenuWindow(BaseWindow):
         self.button_list = [
             TranstionButton("Textures/Buttons/levels.png",pygame.Rect(400,225,400,150),2),
             TranstionButton("Textures/Buttons/leaderboard.png",pygame.Rect(400,425,400,150),3),
-            TranstionButton("Textures/Buttons/save_files.png",pygame.Rect(400,600,425,150),4)
+            TranstionButton("Textures/Buttons/save_files.png",pygame.Rect(400,600,400,150),4)
         ]
     def board(self,surface):
         surface.blit(background, (0, 0))
@@ -321,13 +330,6 @@ class TranstionButton:
             return self.target
         return None
 
-class Levels:
-    def __init__(self):
-        pass
-    def board(self,surface):
-        pass
-    def event_enter(self, event):
-        pass
 
 class Level(BaseWindow):
     def __init__(self, level_name,lvl_num,time_lim,def_score):
@@ -481,7 +483,7 @@ class Level(BaseWindow):
             offset = pygame.Vector2(self.offset_x,self.offset_y)
             spike.tile_rect.topleft = spike.pos - offset
             surface.blit(spike.sprite,spike.tile_rect)
-            spike.cooldown(surface)
+            spike.cooldown(surface,offset)
             self.hp_num -= spike.hit(self.player_rect)
             
         
@@ -516,7 +518,7 @@ class Level(BaseWindow):
         self.score = self.def_score + self.coin_num*self.coin_reward - (5-self.hp_num)*self.hp_penalty - time_penalty
         self.score = self.score - self.score%5
 
-        self.player_interface.draw_interface(surface,self.hp_num,self.coin_num,int(self.score),self.cur_time,self.time_limit)
+        self.player_interface.draw_interface(surface,self.hp_num,self.coin_num,int(self.score),self.machinery_num,self.max_machinery,self.cur_time,self.time_limit)
 
         #Checks if the player had lost all of his health points
         if self.hp_num < 1:
@@ -524,7 +526,7 @@ class Level(BaseWindow):
             self.state = "DEATH"
             #variables "active" is set to be false, so the player can't exit this screen
             self.active = False
-        if self.machinery_num == self.max_machinery:
+        if self.max_machinery == self.machinery_num:
             self.state = "WON"
             self.active = False
         #if the game is not active, the pop Up Screen is shown
@@ -587,13 +589,14 @@ class Level(BaseWindow):
 
     #method that resets level's variables and lists
     def lvl_reset(self):
-        #player's hp, coin number, position and state are reset
+        #player's hp, coin number, position state and other metrics are reset 
         self.coin_num = 0
         self.hp_num = 5
         self.offset_x = 0
         self.offset_y = 0
         self.cur_time = 0
         self.score = 0
+        self.machinery_num = 0
         self.state = "ACTIVE"
         for spike in self.spikes:
             spike.cur_time = 0
@@ -604,6 +607,11 @@ class Level(BaseWindow):
         #turret's cooldown times are set to default
         for turret in self.world_turrets:
             turret.current_time = time() - turret.round_delay_temp
+        for machine in self.machinery:
+            #all machines are rest to their basic settings
+            machine.sprite = broken_machinery
+            machine.fixed = False
+            machine.active = True
         #restores all collectible coins back onto the level
         self.active_coins = self.perm_coins.copy()
         self.active = True
@@ -700,7 +708,7 @@ class Machinery:
     def fix(self,surface):
         if not self.fixed:
             if self.progress <2*pi:
-                self.progress+=pi/180
+                self.progress+=pi/60
                 arc_rect = pygame.Rect(self.tile_rect.topleft-pygame.Vector2(machinery_size/2,machinery_size/2), (machinery_size*2,machinery_size*2))
                 pygame.draw.arc(surface,(0, 255, 0),arc_rect,0,self.progress,5)
             else:
@@ -726,7 +734,7 @@ class Spike:
         else:
             return 0
 
-    def cooldown(self,surface):
+    def cooldown(self,surface,offset):
         if self.cur_time < self.reset_time:
             self.cur_time += clock.get_time()/1000
             self.sprite = retracted_spikes
@@ -744,17 +752,16 @@ class Timed_Spike(Spike):
             self.cur_time = 0
             self.ready = False
             self.sprite = retracted_spikes
-            return 1
+            return 4
         else:
             return 0
-    def cooldown(self,surface):
+    def cooldown(self,surface,offset):
         self.cur_time += clock.get_time()/1000
         if self.cur_time >= self.reset_time:
             self.ready = True
             self.sprite = normal_spikes
             if self.cur_time > self.reset_time+self.active_time:
                 self.cur_time = 0
-                print("bem bem bem")
                 self.ready = False
                 self.sprite = retracted_spikes
         else:
@@ -780,10 +787,13 @@ class Player_interface:
         self.coin_bar_width = 150
         self.time_bar_width = 210
         self.score_bar_width = 200
+        self.machine_icon_size = 50
+        self.machine_bar_width = 160
 
         self.icon_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",25)
         self.time_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",30)
         self.time_limit_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",15)
+        self.machine_num_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",20)
         self.score_font = pygame.font.Font("Textures\Fonts\PixelOperator-Bold.ttf",25)
         
         #images of the icons are uploaded and scaled 
@@ -817,14 +827,20 @@ class Player_interface:
         score_bar = pygame.image.load("Textures/Interface/score_bar.png")
         self.score_bar_icon = pygame.transform.smoothscale(score_bar, (self.score_bar_width,self.score_bar_width/2))
 
+        self.machine_bar_pos = pygame.Vector2(20,230)
+        self.machine_icon = pygame.transform.smoothscale(fixed_machinery, (self.machine_icon_size,self.machine_icon_size))
+        self.machine_bar_icon = pygame.transform.smoothscale(coin_bar, (self.machine_bar_width,self.machine_bar_width/2.5))
+        
 
-    def draw_interface(self,surface,hp_num,coin_num,score,timer,time_limit):
+
+    def draw_interface(self,surface,hp_num,coin_num,score,machine_count,max_machine,timer,time_limit):
         #heart bar is displayed
         surface.blit(self.heart_bar_img,self.health_bar_rect)
         #algorithm checks hp_num and displays a number of hearts
         for heart in range(0,hp_num):
             #heart_pos is calculated and depending on the order of the heart, an offset is added
-            heart_pos = self.health_bar_pos+pygame.Vector2(self.health_bar_width/17,self.health_bar_width/21.3)+pygame.Vector2(self.health_bar_width/5.6,0)*heart
+            heart_pos = self.health_bar_pos+pygame.Vector2(self.health_bar_width/17,self.health_bar_width/21.3
+            )+pygame.Vector2(self.health_bar_width/5.6,0)*heart
             #creates a rect, where the heart will be displayed
             heart_rect = pygame.Rect(heart_pos,(self.heart_icon.get_width(),self.heart_icon.get_height()))
             #heart gets displayed
@@ -845,6 +861,17 @@ class Player_interface:
         coin_count_rect.center = self.coin_bar_pos+pygame.Vector2(self.coin_bar_icon.get_width()*0.7,self.coin_bar_icon.get_height()/2)
         #coin number is displayed
         surface.blit(coin_count_text,coin_count_rect)
+
+        surface.blit(self.machine_bar_icon,self.machine_bar_pos)
+        machine_icon_rect = pygame.Rect(self.machine_bar_pos,(self.machine_icon_size,self.machine_icon_size))
+        machine_icon_rect.center = self.machine_bar_pos+pygame.Vector2(self.machine_bar_icon.get_width()/1.33,self.machine_bar_icon.get_height()/2)
+        surface.blit(self.machine_icon,machine_icon_rect)
+
+
+        machine_num_text = self.machine_num_font.render(str(machine_count)+"/"+str(max_machine),True,(255,255,255))
+        machine_num_rect = pygame.Rect(self.machine_bar_pos,(machine_num_text.get_width(),machine_num_text.get_height()))
+        machine_num_rect.center = self.machine_bar_pos+pygame.Vector2(self.machine_bar_icon.get_width()/4,self.machine_bar_icon.get_height()/2)
+        surface.blit(machine_num_text,machine_num_rect)
 
         #score bar is displayed
         surface.blit(self.score_bar_icon,self.score_bar_pos)
@@ -892,7 +919,7 @@ class Turret:
 
         self.current_time = 0
         self.theta = 0
-        self.shoot_delay = 0.1
+        self.shoot_delay = 0.7
         self.shoot_num = 5
         self.round_delay = 3
         self.round_delay_temp = self.round_delay
@@ -1032,9 +1059,208 @@ class Coins:
         self.pos=pygame.Vector2(x,y)+pygame.Vector2(tile_size/2,tile_size/2)-pygame.Vector2(coin_size/2,coin_size/2)
         self.rect = pygame.Rect(self.pos, (coin_size, coin_size))
         self.value = 1
-        
     def check_col(self,player_rect):
         return self.rect.colliderect(player_rect)
+
+class LeaderBoard(BaseWindow):
+    def __init__(self):
+        self.return_button = TranstionButton("Textures/Buttons/return_button.png",pygame.Rect(20,700,120,60),1)
+        self.table = []
+        self.line_width = 900
+        self.table_pos = pygame.Vector2(600-self.line_width/2,170)
+        self.line_height = 30
+        pass
+
+    def board(self,surface):
+        surface.blit(background, (0, 0))
+        title = title_font.render("Leaderboard",True,(255,255,255))
+        surface.blit(title,(600-title.get_width()/2,80))
+        for line in self.table:
+            line.board(surface)
+        self.return_button.board(surface)
+    
+    def event_enter(self,event):
+        result = self.return_button.event_enter(event)
+        if result:
+            self.transition_to = result
+
+    def on_enter(self):
+        player_list = []
+        for filename in os.listdir("game_saves"):
+            with open("game_saves/"+filename,"r") as file:
+                player_info = json.load(file)
+                info_list = []
+                player_name = filename[:-5]
+                print(player_name)
+                for save in player_info["Game_Saves"]:
+                    total_score = sum(save["Score"])
+                    total_coins = sum(save["Coins"])
+                    info_list.append((player_name,total_score,total_coins))
+                info_list = self.bubble_sort(info_list,1)
+                player_list.append(info_list[0])
+        player_list = self.bubble_sort(player_list,1)
+
+        self.table.append(LeaderLine(self.line_width,self.line_height,self.table_pos,("Player","Score","Coins"),""))
+        limit = 21
+        num = 0
+        if len(player_list)<=limit:
+            num = len(player_list)
+        else:
+            num = limit
+        
+        for i in range(0,num):
+            item = player_list[i]
+            pos = self.table_pos+pygame.Vector2(0,self.line_height*(i+1))
+            self.table.append(LeaderLine(self.line_width,self.line_height,pos,item,i+1))
+            
+        
+    def bubble_sort(self,list_to_sort,sii):
+        length = len(list_to_sort)
+        for i in range(length-1):
+            swapped = False
+            for j in range(length-i-1):
+                if list_to_sort[j][sii] < list_to_sort[j+1][sii]:
+                    temp = list_to_sort[j]
+                    list_to_sort[j] = list_to_sort[j+1]
+                    list_to_sort[j+1] = temp
+                    swapped = True
+            if not swapped:
+                break
+        return list_to_sort
+
+class LeaderLine:
+    # one font for all lines
+    font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",18)
+    def __init__(self,width,height,pos,info,index):
+        # position and parametres of the line are recorded
+        self.pos = pos
+        self.height = height
+        self.width = width
+
+        # player's info is extracted
+        self.name = info[0]
+        self.score = info[1]
+        self.coins = info[2]
+        self.index = index
+
+        # sizes of each box, must all add up to 1
+        self.index_coef = 0.05
+        self.name_coef = 0.45
+        self.info_coef = 0.25
+
+        # boxes for index, name, score and 
+        self.index_box = pygame.transform.smoothscale(leader_line, (self.width*self.index_coef,self.height))
+        self.name_box = pygame.transform.smoothscale(leader_line, (self.width*self.name_coef,self.height))
+        self.info_box = pygame.transform.smoothscale(leader_line, (self.width*self.info_coef,self.height))
+        
+
+        self.index_rect = pygame.Rect(self.pos,self.index_box.get_size())
+        self.name_rect = pygame.Rect(self.pos+pygame.Vector2(self.index_box.get_width(),0),self.name_box.get_size())
+        self.score_rect = pygame.Rect(self.pos+pygame.Vector2(self.index_box.get_width(),0)+pygame.Vector2(self.name_box.get_width(),0),self.info_box.get_size())
+        self.coin_rect = pygame.Rect(self.pos+pygame.Vector2(self.index_box.get_width(),0)+pygame.Vector2(self.name_box.get_width(),0)+pygame.Vector2(self.info_box.get_width(),0),self.info_box.get_size())
+        
+
+    def board(self,surface):
+        # blit the numbers and values and names on bg
+        surface.blit(self.index_box,self.index_rect)
+        surface.blit(self.name_box,self.name_rect)
+        surface.blit(self.info_box,self.score_rect)
+        surface.blit(self.info_box,self.coin_rect)
+    
+        index = self.font.render(str(self.index),True,(255,255,255))
+        name = self.font.render(str(self.name),True,(255,255,255))
+        score = self.font.render(str(self.score),True,(255,255,255))
+        coins = self.font.render(str(self.coins),True,(255,255,255))
+        
+        surface.blit(index,self.index_rect.center-pygame.Vector2(index.get_width()/2,index.get_height()/2)) #planned mistake here
+        surface.blit(name,self.name_rect.center-pygame.Vector2(name.get_width()/2,name.get_height()/2)) #planned mistake here
+        surface.blit(score,self.score_rect.center-pygame.Vector2(score.get_width()/2,score.get_height()/2)) #planned mistake here
+        surface.blit(coins,self.coin_rect.center-pygame.Vector2(coins.get_width()/2,coins.get_height()/2)) #planned mistake here
+       
+class SaveMenu(BaseWindow):
+    def __init__(self):
+        self.box_width = 710
+        self.box_height = self.box_width*0.25
+        self.list_pos = pygame.Vector2(600-self.box_width/2,170)
+        self.offset = 45
+        self.return_button = TranstionButton("Textures/Buttons/return_button.png",pygame.Rect(20,700,120,60),1)
+
+        self.save_button_list = []
+
+        for i in range(0,3):
+            new_pos = self.list_pos+pygame.Vector2(0,self.box_height+self.offset)*i
+            self.save_button_list.append(SaveButton(new_pos,i+1,self.box_width,self.box_height))
+    
+    def board(self,surface):
+        surface.blit(background, (0, 0))
+
+        title = title_font.render("Save Files",True,(255,255,255))
+        surface.blit(title,(600-title.get_width()/2,80))
+        self.return_button.board(surface)
+        for button in self.save_button_list:
+            button.draw_button(surface)
+    
+    def event_enter(self, event):
+        for button in self.save_button_list:
+            result = button.event_enter(event)
+            if result:
+                for b in self.save_button_list:
+                    b.set_selected(b.save_num == result)
+                    if b.save_num == result:
+                        global current_save
+                        current_save = result-1
+                        print("result has beenn updated")
+                        user_data["Last_Save"] = result-1
+                        filename = "game_saves/"+current_user+".json"
+                        with open(filename, "w") as save_file:
+                            json.dump(user_data,save_file,indent=2)
+        reutrn_res = self.return_button.event_enter(event)
+        if reutrn_res:
+            self.transition_to = reutrn_res
+
+    def on_enter(self):
+        global current_save
+        for i in range(0,len(self.save_button_list)):
+            button = self.save_button_list[i]
+            button.total_score = sum(user_data["Game_Saves"][i]["Score"])
+            if i == current_save:
+                button.set_selected(True)
+
+                
+class SaveButton:
+    save_num_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",75)
+    score_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",35)
+    def __init__(self,pos,save_num,width,height):
+        self.save_num = save_num
+        self.total_score = 0
+        self.coords = pygame.Rect(pos,(width,height))
+
+        self.selected_save_sprite = pygame.transform.smoothscale(selected_save, (self.coords.width, self.coords.height))
+        self.unselected_save_sprite = pygame.transform.smoothscale(unnselected_save, (self.coords.width, self.coords.height))
+
+        self.sprite = self.unselected_save_sprite 
+
+        self.selected = False
+    def draw_button(self,surface):
+        surface.blit(self.sprite,self.coords)
+        
+        save_num_text = self.save_num_font.render(str(self.save_num),True,(85,135,180))
+        score_text = self.score_font.render(str(self.total_score),True,(85,135,180))
+
+        surface.blit(save_num_text,self.coords.topleft+pygame.Vector2(self.coords.width*0.44,self.coords.height*0.45)-pygame.Vector2(save_num_text.get_width(),save_num_text.get_height())/2)
+        surface.blit(score_text,self.coords.topleft+pygame.Vector2(self.coords.width*0.8,self.coords.height*0.7)-pygame.Vector2(score_text.get_width(),score_text.get_height())/2)
+        
+    def event_enter(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN and self.coords.collidepoint(pygame.mouse.get_pos()):
+            return self.save_num
+        return None
+    def set_selected(self, value):
+        self.selected = value
+        if value:
+            self.sprite = self.selected_save_sprite  
+        else: 
+            self.sprite = self.unselected_save_sprite
+        
 
 
 #textfield objects are created for username and password input
@@ -1047,12 +1273,12 @@ LogIn_Screen = LogInWindow()       #login screen with username/password fields a
 MainMenu_Screen = MainMenuWindow() #main menu where user chooses what to do next
 Level_1 = Level("level_1",2,100,2000)
 Level_2 = Level("level_2",3,30,2000)              #placeholder for the first level of the game
-Window_list = [LogIn_Screen,MainMenu_Screen,Level_1,Level_2]
+Leader_Board = LeaderBoard()
+Save_Menu = SaveMenu()
+Window_list = [LogIn_Screen,MainMenu_Screen,Level_1,Save_Menu,Leader_Board]
 
 #this variable defines which scene is currently active (0 = LogIn, 1 = MainMenu, 2 = Level_1, etc.)
-current_scene = 2
-
-
+current_scene = 0
 
 run = True
 while run:
@@ -1067,6 +1293,9 @@ while run:
     #if the scene's paramtre tranistion_to is something, it transtions to other scene
     if scene.transition_to is not None:
         current_scene = scene.transition_to
+        # scene changes beforehand and it's initial algorithm gets executed
+        scene = Window_list[current_scene]
+        scene.on_enter()
         scene.transition_to = None
     clock.tick(60)
 pygame.quit()

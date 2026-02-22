@@ -344,7 +344,7 @@ class Level(BaseWindow):
                     self.offset_x = x_pos*tile_size-self.surface_width/2
                     self.offset_y = y_pos*tile_size-self.surface_height/2
                 if element == "4":
-                    self.active_projectiles.append(Projectile(x_pos,y_pos,pi,5,pi,projectile_size))
+                    self.active_projectiles.append(Projectile(pygame.Vector2(x_pos,y_pos),pi,5,pi))
                 if element == "5":
                     self.world_turrets.append(Turret(x_pos,y_pos,300,190,self.active_projectiles))
                 element_num += 1

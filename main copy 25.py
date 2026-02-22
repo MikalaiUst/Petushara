@@ -20,7 +20,7 @@ current_save = 0
 window = pygame.display.set_mode((1200,800))
 title = pygame.display.set_caption("LogIn Screen")
 base_font = pygame.font.Font(None,56)
-title_font = pygame.font.Font(None,120)
+title_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",60)
 background = pygame.image.load("Textures/Backgrounds/LogIn.png")
 background = pygame.transform.smoothscale(background, (1200, 800))
 field_pic = pygame.image.load("Textures/Buttons/text_field.png")
@@ -64,6 +64,12 @@ coin = pygame.image.load("Textures/Objects/Coins/coin.png")
 coin = pygame.transform.smoothscale(coin, (coin_size, coin_size))
 
 
+selected_save = pygame.image.load("Textures/Buttons/Saves/selected_save.png")
+unnselected_save = pygame.image.load("Textures/Buttons/Saves/unselected_save.png")
+
+
+leader_line = pygame.image.load("Textures/Buttons/leader_line.png")
+
 class BaseWindow: # Base class used for all window screens in the program
     # Variable that stores which scene/window the program should switch to next
     transition_to = None
@@ -79,7 +85,7 @@ class BaseWindow: # Base class used for all window screens in the program
     #any kind of events like mouse click or key press will be dealt with in this method
     def event_enter(self, event):
         pass
-
+    # algorithms that had to be performed onnly once are added here
     def on_enter(self):
         pass
 
@@ -293,7 +299,7 @@ class MainMenuWindow(BaseWindow):
         self.button_list = [
             TranstionButton("Textures/Buttons/levels.png",pygame.Rect(400,225,400,150),2),
             TranstionButton("Textures/Buttons/leaderboard.png",pygame.Rect(400,425,400,150),3),
-            TranstionButton("Textures/Buttons/save_files.png",pygame.Rect(400,600,425,150),4)
+            TranstionButton("Textures/Buttons/save_files.png",pygame.Rect(400,600,400,150),4)
         ]
     def board(self,surface):
         surface.blit(background, (0, 0))
@@ -324,13 +330,6 @@ class TranstionButton:
             return self.target
         return None
 
-class Levels:
-    def __init__(self):
-        pass
-    def board(self,surface):
-        pass
-    def event_enter(self, event):
-        pass
 
 class Level(BaseWindow):
     def __init__(self, level_name,lvl_num,time_lim,def_score):
@@ -840,7 +839,8 @@ class Player_interface:
         #algorithm checks hp_num and displays a number of hearts
         for heart in range(0,hp_num):
             #heart_pos is calculated and depending on the order of the heart, an offset is added
-            heart_pos = self.health_bar_pos+pygame.Vector2(self.health_bar_width/17,self.health_bar_width/21.3)+pygame.Vector2(self.health_bar_width/5.6,0)*heart
+            heart_pos = self.health_bar_pos+pygame.Vector2(self.health_bar_width/17,self.health_bar_width/21.3
+            )+pygame.Vector2(self.health_bar_width/5.6,0)*heart
             #creates a rect, where the heart will be displayed
             heart_rect = pygame.Rect(heart_pos,(self.heart_icon.get_width(),self.heart_icon.get_height()))
             #heart gets displayed
@@ -1064,14 +1064,28 @@ class Coins:
 
 class LeaderBoard(BaseWindow):
     def __init__(self):
-        self.player_list = []
+        self.return_button = TranstionButton("Textures/Buttons/return_button.png",pygame.Rect(20,700,120,60),1)
+        self.table = []
+        self.line_width = 900
+        self.table_pos = pygame.Vector2(600-self.line_width/2,170)
+        self.line_height = 30
         pass
 
     def board(self,surface):
-        surface.fill((255,255,255))
-        print(self.player_list)
+        surface.blit(background, (0, 0))
+        title = title_font.render("Leaderboard",True,(255,255,255))
+        surface.blit(title,(600-title.get_width()/2,80))
+        for line in self.table:
+            line.board(surface)
+            self.return_button.board(surface)
+    
+    def event_enter(self,event):
+        result = self.return_button.event_enter(event)
+        if result:
+            self.transition_to = result
 
     def on_enter(self):
+        player_list = []
         for filename in os.listdir("game_saves"):
             with open("game_saves/"+filename,"r") as file:
                 player_info = json.load(file)
@@ -1083,11 +1097,23 @@ class LeaderBoard(BaseWindow):
                     total_coins = sum(save["Coins"])
                     info_list.append((player_name,total_score,total_coins))
                 info_list = self.bubble_sort(info_list,1)
-                self.player_list.append(info_list[0])
-        self.player_list = self.bubble_sort(self.player_list,1)
+                player_list.append(info_list[0])
+        player_list = self.bubble_sort(player_list,1)
 
-                    
-
+        self.table.append(LeaderLine(self.line_width,self.line_height,self.table_pos,("Player","Score","Coins"),""))
+        limit = 21
+        num = 0
+        if len(player_list)<=limit:
+            num = len(player_list)
+        else:
+            num = limit
+        
+        for i in range(0,num):
+            item = player_list[i]
+            pos = self.table_pos+pygame.Vector2(0,self.line_height*(i+1))
+            self.table.append(LeaderLine(self.line_width,self.line_height,pos,item,i+1))
+            
+        
     def bubble_sort(self,list_to_sort,sii):
         length = len(list_to_sort)
         for i in range(length-1):
@@ -1102,11 +1128,109 @@ class LeaderBoard(BaseWindow):
                 break
         return list_to_sort
 
+class LeaderLine:
+    # one font for all lines
+    font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",18)
+    def __init__(self,width,height,pos,info,index):
+        # position and parametres of the line are recorded
+        self.pos = pos
+        self.height = height
+        self.width = width
+
+        # player's info is extracted
+        self.name = info[0]
+        self.score = info[1]
+        self.coins = info[2]
+        self.index = index
+
+        # sizes of each box, must all add up to 1
+        self.index_coef = 0.05
+        self.name_coef = 0.45
+        self.info_coef = 0.25
+
+        # boxes for index, name, score and 
+        self.index_box = pygame.transform.smoothscale(leader_line, (self.width*self.index_coef,self.height))
+        self.name_box = pygame.transform.smoothscale(leader_line, (self.width*self.name_coef,self.height))
+        self.info_box = pygame.transform.smoothscale(leader_line, (self.width*self.info_coef,self.height))
+        
+
+        self.index_rect = pygame.Rect(self.pos,self.index_box.get_size())
+        self.name_rect = pygame.Rect(self.pos+pygame.Vector2(self.index_box.get_width(),0),self.name_box.get_size())
+        self.score_rect = pygame.Rect(self.pos+pygame.Vector2(self.index_box.get_width(),0)+pygame.Vector2(self.name_box.get_width(),0),self.info_box.get_size())
+        self.coin_rect = pygame.Rect(self.pos+pygame.Vector2(self.index_box.get_width(),0)+pygame.Vector2(self.name_box.get_width(),0)+pygame.Vector2(self.info_box.get_width(),0),self.info_box.get_size())
+        
+
+    def board(self,surface):
+        # blit the numbers and values and names on bg
+        surface.blit(self.index_box,self.index_rect)
+        surface.blit(self.name_box,self.name_rect)
+        surface.blit(self.info_box,self.score_rect)
+        surface.blit(self.info_box,self.coin_rect)
+    
+        index = self.font.render(str(self.index),True,(255,255,255))
+        name = self.font.render(str(self.name),True,(255,255,255))
+        score = self.font.render(str(self.score),True,(255,255,255))
+        coins = self.font.render(str(self.coins),True,(255,255,255))
+        
+        surface.blit(index,self.index_rect.center-pygame.Vector2(index.get_width()/2,index.get_height()/2)) #planned mistake here
+        surface.blit(name,self.name_rect.center-pygame.Vector2(name.get_width()/2,name.get_height()/2)) #planned mistake here
+        surface.blit(score,self.score_rect.center-pygame.Vector2(score.get_width()/2,score.get_height()/2)) #planned mistake here
+        surface.blit(coins,self.coin_rect.center-pygame.Vector2(coins.get_width()/2,coins.get_height()/2)) #planned mistake here
+       
+class SaveMenu(BaseWindow):
+    def __init__(self):
+        self.box_width = 800
+        self.box_height = self.box_width*0.25
+        self.list_pos = pygame.Vector2(600-self.box_width/2,100)
+        self.offset = 50
+        self.return_button = TranstionButton("Textures/Buttons/return_button.png",pygame.Rect(20,700,120,60),1)
+
+        self.save_button_list = []
+
+        for i in range(0,3):
+            new_pos = self.list_pos+pygame.Vector2(0,self.box_height+self.offset)*i
+            self.save_button_list.append(SaveButton(new_pos,i+1,self.box_width,self.box_height))
+    
+    def board(self,surface):
+        surface.blit(background, (0, 0))
+        for button in self.save_button_list:
+            button.draw_button(surface)
+    
+    def event_enter(self,event):
+        for button in self.save_button_list:
+            result = button.event_enter(event)
+            if result:
+                print("govno")
 
 
+class SaveButton:
+    font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",18)
+    def __init__(self,pos,save_num,width,height):
+        self.save_num = save_num
+        self.total_score = 0
+        self.coords = pygame.Rect(pos,(width,height))
 
+        self.selected_save_sprite = pygame.transform.smoothscale(selected_save, (self.coords.width, self.coords.height))
+        self.unselected_save_sprite = pygame.transform.smoothscale(unnselected_save, (self.coords.width, self.coords.height))
 
+        self.sprite = self.unselected_save_sprite 
 
+        self.selected = False
+    def draw_button(self,surface):
+        surface.blit(self.sprite,self.coords)
+        
+        save_num_text = self.font.render(str(self.save_num),True,(42,123,180))
+        score_text = self.font.render(str(self.total_score),True,(42,123,180))
+
+        surface.blit(save_num_text,self.coords.topleft+pygame.Vector2(self.coords.width*0.4,self.coords.height*0.5)-pygame.Vector2(score_text.get_width(),score_text.get_height())/2)
+        surface.blit(score_text,self.coords.topleft+pygame.Vector2(self.coords.width*0.8,self.coords.height*0.7)-pygame.Vector2(score_text.get_width(),score_text.get_height())/2)
+        
+    def event_enter(self,event):
+        if event.type == pygame.MOUSEBUTTONDOWN and pygame.Rect.collidepoint(self.coords,pygame.mouse.get_pos()) and self.selected == False:
+            self.selected = True
+            self.sprite = self.selected_save_sprite
+            return self.save_num
+        return None
 
 
 #textfield objects are created for username and password input
@@ -1120,7 +1244,8 @@ MainMenu_Screen = MainMenuWindow() #main menu where user chooses what to do next
 Level_1 = Level("level_1",2,100,2000)
 Level_2 = Level("level_2",3,30,2000)              #placeholder for the first level of the game
 Leader_Board = LeaderBoard()
-Window_list = [LogIn_Screen,MainMenu_Screen,Level_1,Level_2,Leader_Board]
+Save_Menu = SaveMenu()
+Window_list = [LogIn_Screen,MainMenu_Screen,Level_1,Save_Menu,Leader_Board]
 
 #this variable defines which scene is currently active (0 = LogIn, 1 = MainMenu, 2 = Level_1, etc.)
 current_scene = 1
@@ -1138,6 +1263,7 @@ while run:
     #if the scene's paramtre tranistion_to is something, it transtions to other scene
     if scene.transition_to is not None:
         current_scene = scene.transition_to
+        # scene changes beforehand and it's initial algorithm gets executed
         scene = Window_list[current_scene]
         scene.on_enter()
         scene.transition_to = None
