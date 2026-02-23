@@ -1179,88 +1179,123 @@ class LeaderLine:
        
 class SaveMenu(BaseWindow):
     def __init__(self):
-        self.box_width = 710
+        #dimensions of each save slot box
+        self.box_width = 700
         self.box_height = self.box_width*0.25
+
+        #starting position of the save slot list (centered horizontally)
         self.list_pos = pygame.Vector2(600-self.box_width/2,170)
-        self.offset = 45
+
+        #vertical spacing between save slots
+        self.offset = 50
+
+        #button that allows the user to return back to the main menu
         self.return_button = TranstionButton("Textures/Buttons/return_button.png",pygame.Rect(20,700,120,60),1)
 
+        #list that will store all save slot buttons
         self.save_button_list = []
 
+        #creates three save buttons and places them vertically one under another
         for i in range(0,3):
             new_pos = self.list_pos+pygame.Vector2(0,self.box_height+self.offset)*i
             self.save_button_list.append(SaveButton(new_pos,i+1,self.box_width,self.box_height))
+        
     
     def board(self,surface):
+        #background is drawn and title is rendered and drawn as well
         surface.blit(background, (0, 0))
-
         title = title_font.render("Save Files",True,(255,255,255))
         surface.blit(title,(600-title.get_width()/2,80))
-        self.return_button.board(surface)
+
+        #each save button from the list is rendered
         for button in self.save_button_list:
             button.draw_button(surface)
+        #return button gets drawn
+        self.return_button.board(surface)
     
-    def event_enter(self, event):
+    def event_enter(self,event):
+        #checks whether any of the save buttons were pressed
         for button in self.save_button_list:
             result = button.event_enter(event)
             if result:
-                for b in self.save_button_list:
-                    b.set_selected(b.save_num == result)
-                    if b.save_num == result:
-                        global current_save
-                        current_save = result-1
-                        print("result has beenn updated")
-                        user_data["Last_Save"] = result-1
-                        filename = "game_saves/"+current_user+".json"
-                        with open(filename, "w") as save_file:
-                            json.dump(user_data,save_file,indent=2)
-        reutrn_res = self.return_button.event_enter(event)
-        if reutrn_res:
-            self.transition_to = reutrn_res
+                #updates the currently selected save slot
+                global current_save
+                current_save = result-1
+                print("result has been updated")
 
+                #updates the "Last_Save" value inside the user's data structure
+                user_data["Last_Save"] = result-1
+
+                #opens the corresponding save file and overwrites it with updated data
+                filename = "game_saves/"+current_user+".json"
+                with open(filename, "w") as save_file:
+                    json.dump(user_data,save_file,indent=2)
+        return_res = self.return_button.event_enter(event)
+        if return_res:
+            self.transition_to = return_res
+    
     def on_enter(self):
-        global current_save
-        for i in range(0,len(self.save_button_list)):
-            button = self.save_button_list[i]
-            button.total_score = sum(user_data["Game_Saves"][i]["Score"])
-            if i == current_save:
-                button.set_selected(True)
+    #when entering the SaveMenu screen, the currently selected save slot
+    #and each slot's total score must be refreshed from stored user data
 
-                
+        global current_save
+
+        #loop through all save buttons in the list
+        for i in range(0,len(self.save_button_list)):
+
+            #retrieve current button object
+            button = self.save_button_list[i]
+
+            #calculate total score for this save slot by summing all level scores
+            button.total_score = sum(user_data["Game_Saves"][i]["Score"])
+
+
+
 class SaveButton:
-    save_num_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",75)
+    #font used for rendering save number and total score
+    index_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",55)
     score_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",35)
+
     def __init__(self,pos,save_num,width,height):
+        #stores the save slot number
         self.save_num = save_num
+
+        #stores total score for this save slot (initially zero)
         self.total_score = 0
+
+        #rectangle defining the clickable area and position of the button
         self.coords = pygame.Rect(pos,(width,height))
 
+        #sprites for selected and unselected states are scaled to match button size
         self.selected_save_sprite = pygame.transform.smoothscale(selected_save, (self.coords.width, self.coords.height))
         self.unselected_save_sprite = pygame.transform.smoothscale(unnselected_save, (self.coords.width, self.coords.height))
 
+        #by default button is unselected
         self.sprite = self.unselected_save_sprite 
-
         self.selected = False
+
     def draw_button(self,surface):
+        #current sprite (selected or unselected) is drawn
         surface.blit(self.sprite,self.coords)
         
-        save_num_text = self.save_num_font.render(str(self.save_num),True,(85,135,180))
-        score_text = self.score_font.render(str(self.total_score),True,(85,135,180))
+        #renders save slot number and total score text
+        save_num_text = self.index_font.render(str(self.save_num),True,(42,123,180))
+        score_text = self.score_font.render(str(self.total_score),True,(42,123,180))
 
-        surface.blit(save_num_text,self.coords.topleft+pygame.Vector2(self.coords.width*0.44,self.coords.height*0.45)-pygame.Vector2(save_num_text.get_width(),save_num_text.get_height())/2)
+        #positions text relative to button dimensions so it remains centered proportionally
+        surface.blit(save_num_text,self.coords.topleft+pygame.Vector2(self.coords.width*0.44,self.coords.height*0.4)-pygame.Vector2(score_text.get_width(),score_text.get_height())/2)
         surface.blit(score_text,self.coords.topleft+pygame.Vector2(self.coords.width*0.8,self.coords.height*0.7)-pygame.Vector2(score_text.get_width(),score_text.get_height())/2)
         
-    def event_enter(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN and self.coords.collidepoint(pygame.mouse.get_pos()):
+    def event_enter(self,event):
+        #checks if user clicked on this save slot and it was not already selected
+        if event.type == pygame.MOUSEBUTTONDOWN and pygame.Rect.collidepoint(self.coords,pygame.mouse.get_pos()) and self.selected == False:
+            #if so, button changes to selected state
+            self.selected = True
+            self.sprite = self.selected_save_sprite
+
+            #returns the save slot number to the parent class
             return self.save_num
         return None
-    def set_selected(self, value):
-        self.selected = value
-        if value:
-            self.sprite = self.selected_save_sprite  
-        else: 
-            self.sprite = self.unselected_save_sprite
-        
 
 
 #textfield objects are created for username and password input

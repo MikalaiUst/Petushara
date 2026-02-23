@@ -1064,70 +1064,110 @@ class Coins:
 
 class LeaderBoard(BaseWindow):
     def __init__(self):
+        #return button allowing the player to go back to the main menu
         self.return_button = TranstionButton("Textures/Buttons/return_button.png",pygame.Rect(20,700,120,60),1)
+        
+        #list storing all leaderboard rows (header + player entries)
         self.table = []
+        
+        #dimensions and position parameters of the leaderboard table
         self.line_width = 900
         self.table_pos = pygame.Vector2(600-self.line_width/2,170)
         self.line_height = 30
-        pass
 
     def board(self,surface):
+        #background and title are rendered first
         surface.blit(background, (0, 0))
         title = title_font.render("Leaderboard",True,(255,255,255))
         surface.blit(title,(600-title.get_width()/2,80))
+        
+        #each prepared line of the leaderboard is drawn one by one
         for line in self.table:
             line.board(surface)
-            self.return_button.board(surface)
+            
+        #return button is displayed on the screen
+        self.return_button.board(surface)
     
     def event_enter(self,event):
+        #checks if the return button was pressed
         result = self.return_button.event_enter(event)
         if result:
             self.transition_to = result
 
     def on_enter(self):
+        #temporary list storing best result of each player
         player_list = []
+        #loops through all save files in the game_saves directory
         for filename in os.listdir("game_saves"):
             with open("game_saves/"+filename,"r") as file:
                 player_info = json.load(file)
+                
+                #list storing results for each save slot of current player
                 info_list = []
+                
+                #extracts player's username from filename
                 player_name = filename[:-5]
                 print(player_name)
+                
+                #for each save slot calculates total score and total coins collected
                 for save in player_info["Game_Saves"]:
                     total_score = sum(save["Score"])
                     total_coins = sum(save["Coins"])
+                    
+                    #tuple containing  leaderboard information
                     info_list.append((player_name,total_score,total_coins))
+                
+                #sorts player's saves by score in descending order
                 info_list = self.bubble_sort(info_list,1)
+                
+                #only the best save of that player is added to the global player list
                 player_list.append(info_list[0])
+        
+        #all players are sorted by score to create final ranking
         player_list = self.bubble_sort(player_list,1)
 
-        self.table.append(LeaderLine(self.line_width,self.line_height,self.table_pos,("Player","Score","Coins"),""))
-        limit = 21
+        #header line of the leaderboard table is created
+        self.table.append(LeaderLine(self.line_width,self.line_height,self.table_pos,("Player","Total Score","Total Coins"),""))
+        
+        #limits the number of displayed leaderboard entries
+        limit = 15
         num = 0
+        
         if len(player_list)<=limit:
             num = len(player_list)
         else:
             num = limit
         
+        #creates leaderboard rows for top players
         for i in range(0,num):
             item = player_list[i]
             pos = self.table_pos+pygame.Vector2(0,self.line_height*(i+1))
+            
+            #each row contains rank number and player data
             self.table.append(LeaderLine(self.line_width,self.line_height,pos,item,i+1))
             
         
     def bubble_sort(self,list_to_sort,sii):
+        #bubble sort algorithm
+        #sii parameter defines which element of tuple is used for comparison
         length = len(list_to_sort)
+        
         for i in range(length-1):
             swapped = False
+            
             for j in range(length-i-1):
+                #compares adjacent elements and swaps them if out of order
                 if list_to_sort[j][sii] < list_to_sort[j+1][sii]:
                     temp = list_to_sort[j]
                     list_to_sort[j] = list_to_sort[j+1]
                     list_to_sort[j+1] = temp
                     swapped = True
+            
+            #if no swaps were made, list is already sorted
             if not swapped:
                 break
+        
         return list_to_sort
-
 class LeaderLine:
     # one font for all lines
     font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",18)
@@ -1153,29 +1193,34 @@ class LeaderLine:
         self.name_box = pygame.transform.smoothscale(leader_line, (self.width*self.name_coef,self.height))
         self.info_box = pygame.transform.smoothscale(leader_line, (self.width*self.info_coef,self.height))
         
-
+        # rects for each box are created
         self.index_rect = pygame.Rect(self.pos,self.index_box.get_size())
         self.name_rect = pygame.Rect(self.pos+pygame.Vector2(self.index_box.get_width(),0),self.name_box.get_size())
-        self.score_rect = pygame.Rect(self.pos+pygame.Vector2(self.index_box.get_width(),0)+pygame.Vector2(self.name_box.get_width(),0),self.info_box.get_size())
-        self.coin_rect = pygame.Rect(self.pos+pygame.Vector2(self.index_box.get_width(),0)+pygame.Vector2(self.name_box.get_width(),0)+pygame.Vector2(self.info_box.get_width(),0),self.info_box.get_size())
+        self.score_rect = pygame.Rect(self.pos+pygame.Vector2(self.index_box.get_width(),0)+pygame.Vector2(
+            self.name_box.get_width(),0),self.info_box.get_size())
+        self.coin_rect = pygame.Rect(self.pos+pygame.Vector2(self.index_box.get_width(),0)+pygame.Vector2(
+            self.name_box.get_width(),0)+pygame.Vector2(self.info_box.get_width(),0),self.info_box.get_size())
         
 
     def board(self,surface):
-        # blit the numbers and values and names on bg
+        # each box gets drawn in its place
         surface.blit(self.index_box,self.index_rect)
         surface.blit(self.name_box,self.name_rect)
         surface.blit(self.info_box,self.score_rect)
         surface.blit(self.info_box,self.coin_rect)
     
+        # all text is rendered
         index = self.font.render(str(self.index),True,(255,255,255))
         name = self.font.render(str(self.name),True,(255,255,255))
         score = self.font.render(str(self.score),True,(255,255,255))
         coins = self.font.render(str(self.coins),True,(255,255,255))
-        
-        surface.blit(index,self.index_rect.center-pygame.Vector2(index.get_width()/2,index.get_height()/2)) #planned mistake here
-        surface.blit(name,self.name_rect.center-pygame.Vector2(name.get_width()/2,name.get_height()/2)) #planned mistake here
-        surface.blit(score,self.score_rect.center-pygame.Vector2(score.get_width()/2,score.get_height()/2)) #planned mistake here
-        surface.blit(coins,self.coin_rect.center-pygame.Vector2(coins.get_width()/2,coins.get_height()/2)) #planned mistake here
+
+        # all text is placed in the centre of each box
+        surface.blit(index,self.index_rect.center-pygame.Vector2(index.get_width()/2,index.get_height()/2))
+        surface.blit(name,self.name_rect.center-pygame.Vector2(name.get_width()/2,name.get_height()/2)) 
+        surface.blit(score,self.score_rect.center-pygame.Vector2(score.get_width()/2,score.get_height()/2)) 
+        surface.blit(coins,self.coin_rect.center-pygame.Vector2(coins.get_width()/2,coins.get_height()/2)) 
+       
        
 class SaveMenu(BaseWindow):
     def __init__(self):
@@ -1243,12 +1288,11 @@ LogIn_Screen = LogInWindow()       #login screen with username/password fields a
 MainMenu_Screen = MainMenuWindow() #main menu where user chooses what to do next
 Level_1 = Level("level_1",2,100,2000)
 Level_2 = Level("level_2",3,30,2000)              #placeholder for the first level of the game
-Leader_Board = LeaderBoard()
-Save_Menu = SaveMenu()
-Window_list = [LogIn_Screen,MainMenu_Screen,Level_1,Save_Menu,Leader_Board]
+Leader_Board = LeaderBoard()         #leaderboard is created
+Window_list = [LogIn_Screen,MainMenu_Screen,Level_1,Leader_Board]
 
 #this variable defines which scene is currently active (0 = LogIn, 1 = MainMenu, 2 = Level_1, etc.)
-current_scene = 1
+current_scene = 0
 
 run = True
 while run:
