@@ -1152,7 +1152,6 @@ class LeaderLine:
         self.index_box = pygame.transform.smoothscale(leader_line, (self.width*self.index_coef,self.height))
         self.name_box = pygame.transform.smoothscale(leader_line, (self.width*self.name_coef,self.height))
         self.info_box = pygame.transform.smoothscale(leader_line, (self.width*self.info_coef,self.height))
-        
 
         self.index_rect = pygame.Rect(self.pos,self.index_box.get_size())
         self.name_rect = pygame.Rect(self.pos+pygame.Vector2(self.index_box.get_width(),0),self.name_box.get_size())
@@ -1172,10 +1171,10 @@ class LeaderLine:
         score = self.font.render(str(self.score),True,(255,255,255))
         coins = self.font.render(str(self.coins),True,(255,255,255))
         
-        surface.blit(index,self.index_rect.center-pygame.Vector2(index.get_width()/2,index.get_height()/2)) #planned mistake here
-        surface.blit(name,self.name_rect.center-pygame.Vector2(name.get_width()/2,name.get_height()/2)) #planned mistake here
-        surface.blit(score,self.score_rect.center-pygame.Vector2(score.get_width()/2,score.get_height()/2)) #planned mistake here
-        surface.blit(coins,self.coin_rect.center-pygame.Vector2(coins.get_width()/2,coins.get_height()/2)) #planned mistake here
+        surface.blit(index,self.index_rect.center-pygame.Vector2(index.get_width()/2,index.get_height()/2))
+        surface.blit(name,self.name_rect.center-pygame.Vector2(name.get_width()/2,name.get_height()/2))
+        surface.blit(score,self.score_rect.center-pygame.Vector2(score.get_width()/2,score.get_height()/2)) 
+        surface.blit(coins,self.coin_rect.center-pygame.Vector2(coins.get_width()/2,coins.get_height()/2))
        
 class SaveMenu(BaseWindow):
     def __init__(self):
@@ -1233,7 +1232,9 @@ class SaveMenu(BaseWindow):
         return_res = self.return_button.event_enter(event)
         if return_res:
             self.transition_to = return_res
-    
+
+
+
     def on_enter(self):
     #when entering the SaveMenu screen, the currently selected save slot
     #and each slot's total score must be refreshed from stored user data
@@ -1248,8 +1249,6 @@ class SaveMenu(BaseWindow):
 
             #calculate total score for this save slot by summing all level scores
             button.total_score = sum(user_data["Game_Saves"][i]["Score"])
-
-
 
 class SaveButton:
     #font used for rendering save number and total score

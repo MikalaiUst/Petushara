@@ -382,7 +382,7 @@ class Level(BaseWindow):
         #list, storing the popup buttons
         self.tr_bt_list = [
             TranstionButton("Textures\Buttons\PopUps\\next_level.png",pygame.Rect(pop_up_bt_param,(pop_up_bt_dim,pop_up_bt_dim)),lvl_num+1),
-            TranstionButton("Textures\Buttons\PopUps\home.png",pygame.Rect(pop_up_bt_param+pygame.Vector2(-400,0),(pop_up_bt_dim,pop_up_bt_dim)),1),
+            TranstionButton("Textures\Buttons\PopUps\home.png",pygame.Rect(pop_up_bt_param+pygame.Vector2(-400,0),(pop_up_bt_dim,pop_up_bt_dim)),11),
             TranstionButton("Textures\Buttons\PopUps\\replay.png",pygame.Rect(pop_up_bt_param+pygame.Vector2(400,0),(pop_up_bt_dim,pop_up_bt_dim)),lvl_num)
         ]
 
@@ -576,11 +576,11 @@ class Level(BaseWindow):
                 for button in self.tr_bt_list:
                     res = button.event_enter(event)
                     if res != None:
-                        old_score = user_data["Game_Saves"][current_save]["Score"][self.cur_lvl]
+                        old_score = user_data["Game_Saves"][current_save]["Score"][self.cur_lvl-1]
                         if old_score < self.score:
-                            user_data["Game_Saves"][current_save]["Score"][self.cur_lvl] = self.score
-                            user_data["Game_Saves"][current_save]["Time"][self.cur_lvl] = round(self.cur_time,1)
-                            user_data["Game_Saves"][current_save]["Coins"][self.cur_lvl] = self.coin_num
+                            user_data["Game_Saves"][current_save]["Score"][self.cur_lvl-1] = self.score
+                            user_data["Game_Saves"][current_save]["Time"][self.cur_lvl-1] = round(self.cur_time,1)
+                            user_data["Game_Saves"][current_save]["Coins"][self.cur_lvl-1] = self.coin_num
                             filename = "game_saves/"+current_user+".json"
                             with open(filename, "w") as save_file:
                                 json.dump(user_data,save_file,indent=2)
@@ -1264,10 +1264,12 @@ class SaveButton:
 
 class LevelMenu(BaseWindow):
     def __init__(self):
-        self.pos = pygame.Vector2(50,170)
+        self.pos = pygame.Vector2(150,170)
 
         self.button_width = 400
         self.button_height = self.button_width*0.25
+
+        self.return_button = TranstionButton("Textures/Buttons/return_button.png",pygame.Rect(20,700,120,60),11)
 
         self.offset = 30
         self.level_button_list = []
@@ -1283,12 +1285,16 @@ class LevelMenu(BaseWindow):
         surface.blit(background, (0, 0))
         for button in self.level_button_list:
             button.draw_button(surface)
+        self.return_button.board(surface)
     
     def event_enter(self,event):
         for button in self.level_button_list:
             result = button.event_enter(event)
             if result:
                 self.transition_to = result
+        return_res = self.return_button.event_enter(event)
+        if return_res:
+            self.transition_to = return_res
 
     def on_enter(self):
         global user_data
@@ -1325,8 +1331,8 @@ class LevelButton:
 
         surface.blit(index_txt,self.coords.topleft+pygame.Vector2(self.width*0.18,self.height*0.6)-pygame.Vector2(index_txt.get_width(),index_txt.get_height())/2)
         surface.blit(score_txt,self.coords.topleft+pygame.Vector2(self.width*0.75,self.height*0.27)-pygame.Vector2(score_txt.get_width(),score_txt.get_height())/2)
-        surface.blit(coins_txt,self.coords.topleft+pygame.Vector2(self.width*0.75,self.height*0.50)-pygame.Vector2(coins_txt.get_width(),coins_txt.get_height())/2)
-        surface.blit(time_txt,self.coords.topleft+pygame.Vector2(self.width*0.75,self.height*0.72)-pygame.Vector2(time_txt.get_width(),time_txt.get_height())/2)
+        surface.blit(coins_txt,self.coords.topleft+pygame.Vector2(self.width*0.75,self.height*0.72)-pygame.Vector2(coins_txt.get_width(),coins_txt.get_height())/2)
+        surface.blit(time_txt,self.coords.topleft+pygame.Vector2(self.width*0.75,self.height*0.50)-pygame.Vector2(time_txt.get_width(),time_txt.get_height())/2)
     
     def event_enter(self,event):
         if event.type == pygame.MOUSEBUTTONDOWN and self.coords.collidepoint(pygame.mouse.get_pos()):
@@ -1357,7 +1363,7 @@ Leader_Board = LeaderBoard()
 Save_Menu = SaveMenu()
 Level_Menu = LevelMenu()
 
-Window_list = [LogIn_Screen,Level_1,Level_2,Level_3,Level_4,Level_5,Level_6,Level_7,Level_8,Level_9,Level_10,MainMenu_Screen,Level_Menu,Save_Menu,Leader_Board]
+Window_list = [LogIn_Screen,Level_1,Level_2,Level_3,Level_4,Level_5,Level_6,Level_7,Level_8,Level_9,Level_10,MainMenu_Screen,Level_Menu,Leader_Board,Save_Menu]
 
 #this variable defines which scene is currently active (0 = LogIn, 1 = MainMenu, 2 = Level_1, etc.)
 current_scene = 0
