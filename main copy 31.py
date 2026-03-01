@@ -190,6 +190,7 @@ class LogInWindow(BaseWindow):
         #background is adjusted to this particular window
         background = pygame.image.load("Textures/Backgrounds/LogIn.png")
         self.background = pygame.transform.smoothscale(background, (1200, 800))
+
     def board(self,surface):
         #default
         surface.blit(self.background, (0, 0))
@@ -221,7 +222,7 @@ class LogInWindow(BaseWindow):
                 global current_user,user_data,current_save
                 if not os.path.exists(filename):
                     self.active_message = "non_existant_username_message"
-                    self.transition_to = 1
+                    self.transition_to = 11
                     
                     with open(filename, "w") as file:
                         initial_user_data = {
@@ -241,7 +242,8 @@ class LogInWindow(BaseWindow):
                         user_data = json.load(file)
                         current_save = user_data["Last_Save"]
                         current_user = username_field.user_text
-                        self.transition_to = 1
+                        self.transition_to = 11
+    
 
 class TextArea:
 
@@ -298,9 +300,9 @@ class MainMenuWindow(BaseWindow):
     def __init__(self):
         #buttons are declared and stored in a list
         self.button_list = [
-            TranstionButton("Textures/Buttons/levels.png",pygame.Rect(400,225,400,150),2),
-            TranstionButton("Textures/Buttons/leaderboard.png",pygame.Rect(400,425,400,150),3),
-            TranstionButton("Textures/Buttons/save_files.png",pygame.Rect(400,600,400,150),4)
+            TranstionButton("Textures/Buttons/levels.png",pygame.Rect(400,225,400,150),12),
+            TranstionButton("Textures/Buttons/leaderboard.png",pygame.Rect(400,425,400,150),13),
+            TranstionButton("Textures/Buttons/save_files.png",pygame.Rect(400,600,400,150),14)
         ]
     def board(self,surface):
         surface.blit(background, (0, 0))
@@ -382,7 +384,7 @@ class Level(BaseWindow):
         #list, storing the popup buttons
         self.tr_bt_list = [
             TranstionButton("Textures\Buttons\PopUps\\next_level.png",pygame.Rect(pop_up_bt_param,(pop_up_bt_dim,pop_up_bt_dim)),lvl_num+1),
-            TranstionButton("Textures\Buttons\PopUps\home.png",pygame.Rect(pop_up_bt_param+pygame.Vector2(-400,0),(pop_up_bt_dim,pop_up_bt_dim)),1),
+            TranstionButton("Textures\Buttons\PopUps\home.png",pygame.Rect(pop_up_bt_param+pygame.Vector2(-400,0),(pop_up_bt_dim,pop_up_bt_dim)),11),
             TranstionButton("Textures\Buttons\PopUps\\replay.png",pygame.Rect(pop_up_bt_param+pygame.Vector2(400,0),(pop_up_bt_dim,pop_up_bt_dim)),lvl_num)
         ]
 
@@ -576,11 +578,11 @@ class Level(BaseWindow):
                 for button in self.tr_bt_list:
                     res = button.event_enter(event)
                     if res != None:
-                        old_score = user_data["Game_Saves"][current_save]["Score"][self.cur_lvl]
+                        old_score = user_data["Game_Saves"][current_save]["Score"][self.cur_lvl-1]
                         if old_score < self.score:
-                            user_data["Game_Saves"][current_save]["Score"][self.cur_lvl] = self.score
-                            user_data["Game_Saves"][current_save]["Time"][self.cur_lvl] = round(self.cur_time,1)
-                            user_data["Game_Saves"][current_save]["Coins"][self.cur_lvl] = self.coin_num
+                            user_data["Game_Saves"][current_save]["Score"][self.cur_lvl-1] = self.score
+                            user_data["Game_Saves"][current_save]["Time"][self.cur_lvl-1] = round(self.cur_time,1)
+                            user_data["Game_Saves"][current_save]["Coins"][self.cur_lvl-1] = self.coin_num
                             filename = "game_saves/"+current_user+".json"
                             with open(filename, "w") as save_file:
                                 json.dump(user_data,save_file,indent=2)
@@ -1065,7 +1067,7 @@ class Coins:
 
 class LeaderBoard(BaseWindow):
     def __init__(self):
-        self.return_button = TranstionButton("Textures/Buttons/return_button.png",pygame.Rect(20,700,120,60),1)
+        self.return_button = TranstionButton("Textures/Buttons/return_button.png",pygame.Rect(20,700,120,60),11)
         self.table = []
         self.line_width = 900
         self.table_pos = pygame.Vector2(600-self.line_width/2,170)
@@ -1154,7 +1156,7 @@ class LeaderLine:
         self.name_box = pygame.transform.smoothscale(leader_line, (self.width*self.name_coef,self.height))
         self.info_box = pygame.transform.smoothscale(leader_line, (self.width*self.info_coef,self.height))
         
-        
+
         self.index_rect = pygame.Rect(self.pos,self.index_box.get_size())
         self.name_rect = pygame.Rect(self.pos+pygame.Vector2(self.index_box.get_width(),0),self.name_box.get_size())
         self.score_rect = pygame.Rect(self.pos+pygame.Vector2(self.index_box.get_width(),0)+pygame.Vector2(self.name_box.get_width(),0),self.info_box.get_size())
@@ -1180,129 +1182,82 @@ class LeaderLine:
        
 class SaveMenu(BaseWindow):
     def __init__(self):
-        #dimensions of each save slot box (slightly reduced from previous version)
         self.box_width = 710
         self.box_height = self.box_width*0.25
-
-        #starting position of the save slot list (centered horizontally, moved slightly lower)
         self.list_pos = pygame.Vector2(600-self.box_width/2,170)
-
-        #vertical spacing between save slots (adjusted for new layout)
         self.offset = 45
+        self.return_button = TranstionButton("Textures/Buttons/return_button.png",pygame.Rect(20,700,120,60),11)
 
-        #button that allows the user to return back to the main menu
-        self.return_button = TranstionButton("Textures/Buttons/return_button.png",pygame.Rect(20,700,120,60),1)
-
-        #list that will store all save slot buttons
         self.save_button_list = []
 
-        #creates three save buttons and places them vertically one under another
         for i in range(0,3):
             new_pos = self.list_pos+pygame.Vector2(0,self.box_height+self.offset)*i
             self.save_button_list.append(SaveButton(new_pos,i+1,self.box_width,self.box_height))
     
     def board(self,surface):
-        #background is drawn
         surface.blit(background, (0, 0))
 
-        #title of the page is rendered and centered at the top
         title = title_font.render("Save Files",True,(255,255,255))
         surface.blit(title,(600-title.get_width()/2,80))
-
-        #return button is displayed
         self.return_button.board(surface)
-
-        #each save button from the list is rendered
         for button in self.save_button_list:
             button.draw_button(surface)
     
     def event_enter(self, event):
-        #checks whether any of the save buttons were pressed
         for button in self.save_button_list:
             result = button.event_enter(event)
             if result:
-                #loops through all buttons and updates their selected state
                 for b in self.save_button_list:
                     b.set_selected(b.save_num == result)
-
-                    #if this is the selected save slot, update global save reference
                     if b.save_num == result:
                         global current_save
                         current_save = result-1
                         print("result has beenn updated")
-
-                        #update last save inside user data structure
                         user_data["Last_Save"] = result-1
-
-                        #overwrite json file so selection persists between sessions
                         filename = "game_saves/"+current_user+".json"
                         with open(filename, "w") as save_file:
                             json.dump(user_data,save_file,indent=2)
-
-        #checks if return button was pressed
         reutrn_res = self.return_button.event_enter(event)
         if reutrn_res:
-            #scene transition occurs if return button is activated
             self.transition_to = reutrn_res
 
     def on_enter(self):
-        #when entering this scene, restore selection and calculate total scores
         global current_save
-
         for i in range(0,len(self.save_button_list)):
             button = self.save_button_list[i]
-
-            #total score is calculated as the sum of all level scores in that save file
             button.total_score = sum(user_data["Game_Saves"][i]["Score"])
-
-            #if this save slot matches the currently active save, mark it as selected
             if i == current_save:
                 button.set_selected(True)
 
 
 class SaveButton:
-    #separate fonts are used for save number and score to improve visual hierarchy
     save_num_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",75)
     score_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",35)
-
     def __init__(self,pos,save_num,width,height):
-        #stores the save slot number (1, 2 or 3)
         self.save_num = save_num
-
-        #stores total accumulated score for this save slot
         self.total_score = 0
-
-        #rectangle defining the clickable area and position of the button
         self.coords = pygame.Rect(pos,(width,height))
 
-        #sprites for selected and unselected states are scaled to match button size
         self.selected_save_sprite = pygame.transform.smoothscale(selected_save, (self.coords.width, self.coords.height))
         self.unselected_save_sprite = pygame.transform.smoothscale(unnselected_save, (self.coords.width, self.coords.height))
 
-        #by default button is unselected
         self.sprite = self.unselected_save_sprite 
-        self.selected = False
 
+        self.selected = False
     def draw_button(self,surface):
-        #current sprite (selected or unselected) is drawn
         surface.blit(self.sprite,self.coords)
         
-        #renders save slot number and total score text
         save_num_text = self.save_num_font.render(str(self.save_num),True,(85,135,180))
         score_text = self.score_font.render(str(self.total_score),True,(85,135,180))
 
-        #positions text proportionally inside the button to keep layout consistent
         surface.blit(save_num_text,self.coords.topleft+pygame.Vector2(self.coords.width*0.44,self.coords.height*0.45)-pygame.Vector2(save_num_text.get_width(),save_num_text.get_height())/2)
         surface.blit(score_text,self.coords.topleft+pygame.Vector2(self.coords.width*0.8,self.coords.height*0.7)-pygame.Vector2(score_text.get_width(),score_text.get_height())/2)
         
     def event_enter(self, event):
-        #returns save number if this button is clicked
         if event.type == pygame.MOUSEBUTTONDOWN and self.coords.collidepoint(pygame.mouse.get_pos()):
             return self.save_num
         return None
-
     def set_selected(self, value):
-        #updates selected state and switches sprite accordingly
         self.selected = value
         if value:
             self.sprite = self.selected_save_sprite  
@@ -1311,100 +1266,75 @@ class SaveButton:
 
 class LevelMenu(BaseWindow):
     def __init__(self):
-        #starting reference position for the level buttons
-        self.pos = pygame.Vector2(0,0)
+        self.pos = pygame.Vector2(50,170)
 
-        #dimensions of each level button
         self.button_width = 400
         self.button_height = self.button_width*0.25
 
-        #vertical spacing between buttons
         self.offset = 30
-
-        #list that will store all level buttons
         self.level_button_list = []
         
-        #creates 10 level buttons and arranges them into two columns
         for i in range(0,10):
-            #first five buttons are placed in the left column
             if i < 5:
-                bt_pos = self.pos + pygame.Vector2(0,self.button_height+self.offset)*i
-            #remaining five buttons are placed in the right column
+                bt_pos = self.pos +pygame.Vector2(0,self.button_height+self.offset)*i
             else:
-                bt_pos = pygame.Vector2(800,self.pos.y) - pygame.Vector2(self.pos.x,0) - pygame.Vector2(self.button_height,0) + pygame.Vector2(0,self.button_height+self.offset)*i
-            
-            #each LevelButton object is created and added to the list
+                bt_pos = pygame.Vector2(1200,self.pos.y)-pygame.Vector2(self.pos.x,0)-pygame.Vector2(self.button_width,0)+pygame.Vector2(0,self.button_height+self.offset)*(i-5)
             self.level_button_list.append(LevelButton(bt_pos,self.button_width,self.button_height,i+1))
     
     def board(self,surface):
-        #background is drawn
         surface.blit(background, (0, 0))
-
-        #each level button is rendered
         for button in self.level_button_list:
             button.draw_button(surface)
+    
+    def event_enter(self,event):
+        for button in self.level_button_list:
+            result = button.event_enter(event)
+            if result:
+                self.transition_to = result
 
     def on_enter(self):
-        #when entering the level menu, level statistics are loaded from user data
         global user_data
         global current_save
         
-        #loops through all 10 level buttons and updates their displayed values
         for i in range(0,10):
             button = self.level_button_list[i]
-
-            #each button retrieves stored score, coins and time for that level
             button.score = user_data["Game_Saves"][current_save]["Score"][i]
             button.coins = user_data["Game_Saves"][current_save]["Coins"][i]
             button.time = user_data["Game_Saves"][current_save]["Time"][i]
-    pass
-
 
 class LevelButton:
-    #separate fonts are used for the level index and additional information
-    index_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",55)
+    index_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",35)
     info_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",15)
-
     def __init__(self,pos,width,height,index):
-        #stores button dimensions
         self.width = width
         self.height = height
 
-        #rectangle defining button position and clickable area
         self.coords = pygame.Rect(pos, (width,height))
-
-        #button sprite is scaled to match defined dimensions
         self.sprite = pygame.transform.smoothscale(level_button, (self.coords.width, self.coords.height))
 
-        #level index number (1–10)
         self.index = index
-
-        #default stored statistics for the level
         self.score = 0
         self.coins = 0
         self.time = 0
 
     def draw_button(self,surface):
-        #button background sprite is drawn
         surface.blit(self.sprite,self.coords)
 
-        #renders level index and stored statistics
         index_txt = self.index_font.render(str(self.index),True,(85,135,180))
         score_txt = self.info_font.render(str(self.score),True,(85,135,180))
         coins_txt = self.info_font.render(str(self.coins),True,(85,135,180))
         time_txt = self.info_font.render(str(self.time),True,(85,135,180))
 
-        #positions text proportionally within the button to maintain consistent layout
-        surface.blit(index_txt,self.coords.topleft+pygame.Vector2(self.width*0.1,self.height*0.6)-pygame.Vector2(index_txt.get_width(),index_txt.get_height())/2)
-        surface.blit(score_txt,self.coords.topleft+pygame.Vector2(self.width*0.6,self.height*0.25)-pygame.Vector2(score_txt.get_width(),score_txt.get_height())/2)
-        surface.blit(coins_txt,self.coords.topleft+pygame.Vector2(self.width*0.6,self.height*0.45)-pygame.Vector2(coins_txt.get_width(),coins_txt.get_height())/2)
-        surface.blit(time_txt,self.coords.topleft+pygame.Vector2(self.width*0.6,self.height*0.65)-pygame.Vector2(time_txt.get_width(),time_txt.get_height())/2)
+        surface.blit(index_txt,self.coords.topleft+pygame.Vector2(self.width*0.18,self.height*0.6)-pygame.Vector2(index_txt.get_width(),index_txt.get_height())/2)
+        surface.blit(score_txt,self.coords.topleft+pygame.Vector2(self.width*0.75,self.height*0.27)-pygame.Vector2(score_txt.get_width(),score_txt.get_height())/2)
+        surface.blit(coins_txt,self.coords.topleft+pygame.Vector2(self.width*0.75,self.height*0.50)-pygame.Vector2(coins_txt.get_width(),coins_txt.get_height())/2)
+        surface.blit(time_txt,self.coords.topleft+pygame.Vector2(self.width*0.75,self.height*0.72)-pygame.Vector2(time_txt.get_width(),time_txt.get_height())/2)
+    
     def event_enter(self,event):
         if event.type == pygame.MOUSEBUTTONDOWN and self.coords.collidepoint(pygame.mouse.get_pos()):
-            return self.index-1
+            print(self.index)
+            return self.index
         return None
-    
-        
 
 
 #textfield objects are created for username and password input
@@ -1415,15 +1345,21 @@ textfield_list = [password_field,username_field]
 
 LogIn_Screen = LogInWindow()       #login screen with username/password fields and messages
 MainMenu_Screen = MainMenuWindow() #main menu where user chooses what to do next
-Level_1 = Level("level_1",2,100,2000)
-Level_2 = Level("level_2",3,30,2000)              #placeholder for the first level of the game
-
-
+Level_1 = Level("level_1",1,100,2000)
+Level_2 = Level("level_2",2,30,2000)
+Level_3 = Level("level_3",3,100,2000)
+Level_4 = Level("level_4",4,30,2000)
+Level_5 = Level("level_5",5,100,2000)
+Level_6 = Level("level_6",6,30,2000)
+Level_7 = Level("level_7",7,100,2000)
+Level_8 = Level("level_8",8,30,2000)
+Level_9 = Level("level_9",9,100,2000)
+Level_10 = Level("level_10",10,30,2000)
 Leader_Board = LeaderBoard()
 Save_Menu = SaveMenu()
 Level_Menu = LevelMenu()
 
-Window_list = [LogIn_Screen,MainMenu_Screen,Level_Menu,Save_Menu,Leader_Board]
+Window_list = [LogIn_Screen,Level_1,Level_2,Level_3,Level_4,Level_5,Level_6,Level_7,Level_8,Level_9,Level_10,MainMenu_Screen,Level_Menu,Leader_Board,Save_Menu]
 
 #this variable defines which scene is currently active (0 = LogIn, 1 = MainMenu, 2 = Level_1, etc.)
 current_scene = 0
