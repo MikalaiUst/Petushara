@@ -576,11 +576,11 @@ class Level(BaseWindow):
                 for button in self.tr_bt_list:
                     res = button.event_enter(event)
                     if res != None:
-                        old_score = user_data["Game_Saves"][current_save]["Score"][self.cur_lvl]
+                        old_score = user_data["Game_Saves"][current_save]["Score"][self.cur_lvl-1]
                         if old_score < self.score:
-                            user_data["Game_Saves"][current_save]["Score"][self.cur_lvl] = self.score
-                            user_data["Game_Saves"][current_save]["Time"][self.cur_lvl] = round(self.cur_time,1)
-                            user_data["Game_Saves"][current_save]["Coins"][self.cur_lvl] = self.coin_num
+                            user_data["Game_Saves"][current_save]["Score"][self.cur_lvl-1] = self.score
+                            user_data["Game_Saves"][current_save]["Time"][self.cur_lvl-1] = round(self.cur_time,1)
+                            user_data["Game_Saves"][current_save]["Coins"][self.cur_lvl-1] = self.coin_num
                             filename = "game_saves/"+current_user+".json"
                             with open(filename, "w") as save_file:
                                 json.dump(user_data,save_file,indent=2)
@@ -1312,11 +1312,14 @@ class SaveButton:
 class LevelMenu(BaseWindow):
     def __init__(self):
         #starting reference position for the level buttons
-        self.pos = pygame.Vector2(0,0)
+        self.pos = pygame.Vector2(150,170)
 
         #dimensions of each level button
         self.button_width = 400
         self.button_height = self.button_width*0.25
+
+        #return buutton object is created
+        self.return_button = TranstionButton("Textures/Buttons/return_button.png",pygame.Rect(20,700,120,60),1)
 
         #vertical spacing between buttons
         self.offset = 30
@@ -1331,18 +1334,41 @@ class LevelMenu(BaseWindow):
                 bt_pos = self.pos + pygame.Vector2(0,self.button_height+self.offset)*i
             #remaining five buttons are placed in the right column
             else:
-                bt_pos = pygame.Vector2(800,self.pos.y) - pygame.Vector2(self.pos.x,0) - pygame.Vector2(self.button_height,0) + pygame.Vector2(0,self.button_height+self.offset)*i
+                bt_pos = pygame.Vector2(1200,self.pos.y) - pygame.Vector2(self.pos.x,0) - pygame.Vector2(
+                    self.button_width,0) + pygame.Vector2(0,self.button_height+self.offset)*(i-5)
             
             #each LevelButton object is created and added to the list
             self.level_button_list.append(LevelButton(bt_pos,self.button_width,self.button_height,i+1))
     
     def board(self,surface):
-        #background is drawn
+        #background and title are drawn
         surface.blit(background, (0, 0))
+        title = title_font.render("Levels",True,(255,255,255))
+        surface.blit(title,(600-title.get_width()/2,80))
 
         #each level button is rendered
         for button in self.level_button_list:
             button.draw_button(surface)
+
+        #return button is rendered
+        self.return_button.board(surface)
+
+    def event_enter(self,event):
+        #loops through all level buttons and checks if any of them were clicked
+        for button in self.level_button_list:
+            result = button.event_enter(event)
+
+            #if a button returns a value, it means that level was selected
+            if result:
+                #transition_to is updated so the program switches to that level
+                self.transition_to = result
+
+        #checks separately if the return button was pressed
+        return_res = self.return_button.event_enter(event)
+
+        #if return button was activated, scene switches back accordingly
+        if return_res:
+            self.transition_to = return_res
 
     def on_enter(self):
         #when entering the level menu, level statistics are loaded from user data
@@ -1357,8 +1383,6 @@ class LevelMenu(BaseWindow):
             button.score = user_data["Game_Saves"][current_save]["Score"][i]
             button.coins = user_data["Game_Saves"][current_save]["Coins"][i]
             button.time = user_data["Game_Saves"][current_save]["Time"][i]
-    pass
-
 
 class LevelButton:
     #separate fonts are used for the level index and additional information
@@ -1395,10 +1419,14 @@ class LevelButton:
         time_txt = self.info_font.render(str(self.time),True,(85,135,180))
 
         #positions text proportionally within the button to maintain consistent layout
-        surface.blit(index_txt,self.coords.topleft+pygame.Vector2(self.width*0.1,self.height*0.6)-pygame.Vector2(index_txt.get_width(),index_txt.get_height())/2)
-        surface.blit(score_txt,self.coords.topleft+pygame.Vector2(self.width*0.6,self.height*0.25)-pygame.Vector2(score_txt.get_width(),score_txt.get_height())/2)
-        surface.blit(coins_txt,self.coords.topleft+pygame.Vector2(self.width*0.6,self.height*0.45)-pygame.Vector2(coins_txt.get_width(),coins_txt.get_height())/2)
-        surface.blit(time_txt,self.coords.topleft+pygame.Vector2(self.width*0.6,self.height*0.65)-pygame.Vector2(time_txt.get_width(),time_txt.get_height())/2)
+        surface.blit(index_txt,self.coords.topleft+pygame.Vector2(self.width*0.1,self.height*0.6)-pygame.Vector2(
+            index_txt.get_width(),index_txt.get_height())/2)
+        surface.blit(score_txt,self.coords.topleft+pygame.Vector2(self.width*0.6,self.height*0.25)-pygame.Vector2(
+            score_txt.get_width(),score_txt.get_height())/2)
+        surface.blit(coins_txt,self.coords.topleft+pygame.Vector2(self.width*0.6,self.height*0.45)-pygame.Vector2(
+            coins_txt.get_width(),coins_txt.get_height())/2)
+        surface.blit(time_txt,self.coords.topleft+pygame.Vector2(self.width*0.6,self.height*0.65)-pygame.Vector2(
+            time_txt.get_width(),time_txt.get_height())/2)
     def event_enter(self,event):
         if event.type == pygame.MOUSEBUTTONDOWN and self.coords.collidepoint(pygame.mouse.get_pos()):
             return self.index-1

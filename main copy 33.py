@@ -418,27 +418,56 @@ class Level(BaseWindow):
                 y_pos = row_num *tile_size
                 if element == "1":
                     self.world_walls.append(Wall(x_pos,y_pos,tile_size))
-
-                    # print(time()-start,"wall added to the list")
-                if element == "3":
-                    self.world_turrets.append(Turret(x_pos,y_pos,"simple_turret",tile_size,50))
-                if element =="2":
-                    self.offset_x = x_pos*tile_size-self.surface_width/2
-                    self.offset_y = y_pos*tile_size-self.surface_height/2
-                if element == "4":
+                if element == "2":
                     self.active_coins.append(Coins(x_pos,y_pos))
                     self.perm_coins.append(Coins(x_pos,y_pos))
-                if element == "5":
-                    self.world_turrets.append(Turret(x_pos,y_pos,tile_size,500,45,self.active_projectiles))
-                if element == "6":
-                    self.world_turrets.append(Multi_Dir_Turret(x_pos,y_pos,tile_size,500,45,self.active_projectiles))
-                if element == "7":
-                    self.active_projectiles.append(Rose_Projectile(pygame.Vector2(x_pos,y_pos),0,10))
-                if element =="8":
+                if element =="3":
                     self.machinery.append(Machinery(x_pos,y_pos))
                     self.max_machinery += 1
                 if element == "9":
                     self.spikes.append(Timed_Spike(x_pos,y_pos,2,2))
+
+                else:
+                    # self, x, y, tile_sizer, ranger, angle, bullet_list, time_contraints, projectile
+                    obstacle = element.split("#")
+                    if len(obstacle) == 2:
+                        new_turret = obstacle[0].split("|")
+                        new_proj = obstacle[1].split("|")
+                        if new_turret[0] == "nt":
+                            turret_type = Turret
+                        if new_turret[0] == "st":
+                            turret_type = Multi_Dir_Turret
+                        turret_range = float(new_turret[1])
+                        turret_angle = float(new_turret[2])
+                        turret_time_const = (float(new_turret[3]),float(new_turret[4]),float(new_turret[5]))
+                        
+                        if new_proj[0] == "np":
+                            projectile_type = Projectile
+                        if new_proj[0] == "sp":
+                            projectile_type = Spiral_Projectile
+                        if new_proj[0] == "rp":
+                            projectile_type = Rose_Projectile
+                        if new_proj[0] == "op":
+                            projectile_type = Oscilating_Projectile
+                        projectile_speed = float(new_proj[1])
+                        projectile_theta_increase = float(new_proj[2])
+                        projectile_lifetime = float(new_proj[3])
+                        print(projectile_theta_increase)
+
+                        self.world_turrets.append(turret_type(x_pos,y_pos,tile_size,turret_range,turret_angle,
+                        self.active_projectiles,turret_time_const,
+                        (projectile_type,projectile_speed,projectile_theta_increase,projectile_lifetime)))
+                    else:
+                        new_spikes = obstacle[0].split("|")
+                        print(new_spikes)
+                        if new_spikes[0] == "ns":
+                            spike_type = Spikes
+                        if new_spikes[0] == "ts":
+                            spikes_type = Timed_Spikes
+                        spike_reset_time = float(new_spikes[1])
+                        spike_active_time = float(new_spikes[2])
+                        self.spikes.append(spyke_type(x_pos,y_pos,spike_reset_time,spike_active_time))
+                    
                 element_num += 1
             row_num += 1
             
@@ -471,8 +500,12 @@ class Level(BaseWindow):
             surface.blit(projectile, proj.rect)
             if self.active == True:
                 proj.space_pos += proj.velocity()
+                proj.update()
             if proj.check_col(self.player_rect):
                 self.hp_num -=1
+                self.active_projectiles.remove(proj)
+            #remove if lifetime expired
+            if proj.lifetime <= 0:
                 self.active_projectiles.remove(proj)
 
         for cur_coin in self.active_coins:
@@ -775,14 +808,6 @@ class Timed_Spike(Spike):
                 overlay_part = spike_overlay.subsurface(pygame.Rect(0, 0, w, tile_size))
                 surface.blit(overlay_part, self.tile_rect.topleft)
 
-class Trigger_Spike(Spike):
-    def hit(self,player_rect):
-        if self.ready and self.tile_rect.colliderect(player_rect):
-            self.cur_time = 0
-            self.ready = False
-            return 0
-        else:
-            return 0
 class Player_interface:
     def __init__(self):
         #parametres for the bars are interface boxes are set
@@ -913,23 +938,40 @@ class Player_interface:
 
 
 class Turret:
-    def __init__(self, x, y, tile_sizer,ranger,angle,bullet_list):
-        self.pos = pygame.Vector2(x,y)
+    def __init__(self, x, y, tile_sizer, ranger, angle, bullet_list, time_contraints, projectile):
+        #position of the turret in the world is stored as a vector
+        self.pos = pygame.Vector2(x, y)
+
+        #basic parametres defining turret's size, shooting range and initial rotation angle
         self.tile_size = tile_sizer
         self.angle = angle
         self.shoot_range = ranger
+
+        #state variable is used to determine whether turret is currently shooting or inactive
         self.state = "INACTIVE"
+
+        #reference to the list where all spawned projectiles will be appended
         self.bullet_list = bullet_list
 
+        #time-control variables used to manage shooting cycles
         self.current_time = 0
+
+        #time_contraints list stores:
         self.theta = 0
-        self.shoot_delay = 0.7
-        self.shoot_num = 5
-        self.round_delay = 3
+        self.shoot_delay = time_contraints[1]
+        self.shoot_num = time_contraints[2]
+        self.round_delay = time_contraints[0]
+
+        #temporary variable used to track when next projectile in the current round should be fired
         self.round_delay_temp = self.round_delay
-        
-        self.barrel_midpoint = pygame.Vector2(0,0)
-        self.rect = pygame.Rect(x, y, tile_size,tile_size)
+
+        #stores the projectile class/type that this turret will instantiate when shooting
+        self.projectile = projectile
+
+        self.barrel_midpoint = pygame.Vector2(0, 0)
+
+        #collision / drawing rectangle of the turret (screen position gets updated using offset)
+        self.rect = pygame.Rect(x, y, tile_size, tile_size)
         
     def compile_turret(self, surface,offset):
         surface.blit(turret_bottom, self.rect)
@@ -955,9 +997,7 @@ class Turret:
         circle_pos = self.pos+pygame.Vector2(tile_size,tile_size)/2-offset
         pos_dif = circle_pos - pygame.Vector2(player_x,player_y)
         pygame.draw.circle(window,(255,0,0),circle_pos,self.shoot_range,20)
-        # pygame.draw.line(window,(200,200,200),pygame.Vector2(player_x,player_y),circle_pos,3)
         if pos_dif.length()<=player_d/2+self.shoot_range:
-            # print("this player is entering the circle")
             if self.state == "INACTIVE":
                 self.current_time = time()-self.round_delay
             self.state = "SHOOTING"
@@ -975,14 +1015,11 @@ class Turret:
                 angle_rad = self.angle*pi/180
                 barrel_offset = pygame.Vector2(self.tile_size/2, 0)
                 self.barrel_midpoint+=barrel_offset.rotate(-self.angle)
-                self.bullet_list.append(Oscilating_Projectile(self.barrel_midpoint,-angle_rad,5))
-                # print("SHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOTTTTTTTTTTTTTTTTTTTTTTTTTTT")
+                self.bullet_list.append(self.projectile[0](self.barrel_midpoint,-angle_rad,self.projectile[1],self.projectile[2],self.projectile[3]))
                 self.round_delay_temp += self.shoot_delay
         else:
             self.current_time = time()
             self.round_delay_temp = self.round_delay
-        # print("Constant:",self.round_delay)
-        # print("Temp:",self.round_delay_temp)
     def target():
         pass
 class Multi_Dir_Turret(Turret):
@@ -996,16 +1033,12 @@ class Multi_Dir_Turret(Turret):
 
         if time_var<=cycle_time:
             if time_var>self.round_delay_temp:
-                # angle_rad = self.angle*pi/180
-                # barrel_offset = pygame.Vector2(self.tile_size/2, 0)
-                # self.barrel_midpoint+=barrel_offset.rotate(-self.angle)
-                # self.bullet_list.append(Oscilating_Projectile(self.barrel_midpoint,-angle_rad,5))
                 directions = 8
                 for i in range(0,directions):
                     angle_rad = 2*pi/directions*i
                     barrel_offset = pygame.Vector2(self.tile_size/2, 0)*0.8
                     shoot_point = self.barrel_midpoint+barrel_offset.rotate_rad(angle_rad)
-                    self.bullet_list.append(Oscilating_Projectile(shoot_point,angle_rad,5))
+                    self.bullet_list.append(self.projectile[0](shoot_point,angle_rad,self.projectile[1],self.projectile[2],self.projectile[3]))
                 print("SHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOTTTTTTTTTTTTTTTTTTTTTTTTTTT")
                 self.round_delay_temp += self.shoot_delay
         else:
@@ -1015,18 +1048,22 @@ class Multi_Dir_Turret(Turret):
         # print("Temp:",self.round_delay_temp)
 
 class Projectile:
-    def __init__(self, center_pos, angle, speed):
+    def __init__(self, center_pos, angle, speed,theta_increase,lifetime):
         self.space_pos = center_pos-pygame.Vector2(0,projectile_size/2)
         self.angle = angle
         self.speed = speed
+        self.lifetime = lifetime
         self.theta = 0
-        self.theta_increase = 1/10
+        self.theta_increase = 1/theta_increase
         self.rect = pygame.Rect(0, 0, projectile_size, projectile_size)
         self.rect.center = self.space_pos
     def velocity(self):
         x = self.speed
         y = 0
         return pygame.Vector2(x,y).rotate_rad(self.angle)
+    def update(self):
+        #decrease lifetime every frame
+        self.lifetime -= clock.get_time()/1000
     def check_col(self,player_rect):
         return self.rect.colliderect(player_rect)
         

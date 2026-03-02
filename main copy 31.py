@@ -190,7 +190,6 @@ class LogInWindow(BaseWindow):
         #background is adjusted to this particular window
         background = pygame.image.load("Textures/Backgrounds/LogIn.png")
         self.background = pygame.transform.smoothscale(background, (1200, 800))
-
     def board(self,surface):
         #default
         surface.blit(self.background, (0, 0))
@@ -243,7 +242,6 @@ class LogInWindow(BaseWindow):
                         current_save = user_data["Last_Save"]
                         current_user = username_field.user_text
                         self.transition_to = 11
-    
 
 class TextArea:
 
@@ -383,9 +381,12 @@ class Level(BaseWindow):
 
         #list, storing the popup buttons
         self.tr_bt_list = [
-            TranstionButton("Textures\Buttons\PopUps\\next_level.png",pygame.Rect(pop_up_bt_param,(pop_up_bt_dim,pop_up_bt_dim)),lvl_num+1),
-            TranstionButton("Textures\Buttons\PopUps\home.png",pygame.Rect(pop_up_bt_param+pygame.Vector2(-400,0),(pop_up_bt_dim,pop_up_bt_dim)),11),
-            TranstionButton("Textures\Buttons\PopUps\\replay.png",pygame.Rect(pop_up_bt_param+pygame.Vector2(400,0),(pop_up_bt_dim,pop_up_bt_dim)),lvl_num)
+            TranstionButton("Textures\Buttons\PopUps\\next_level.png",pygame.Rect(
+                pop_up_bt_param,(pop_up_bt_dim,pop_up_bt_dim)),lvl_num+1),
+            TranstionButton("Textures\Buttons\PopUps\home.png",pygame.Rect(
+                pop_up_bt_param+pygame.Vector2(-400,0),(pop_up_bt_dim,pop_up_bt_dim)),11),
+            TranstionButton("Textures\Buttons\PopUps\\replay.png",pygame.Rect(
+                pop_up_bt_param+pygame.Vector2(400,0),(pop_up_bt_dim,pop_up_bt_dim)),lvl_num)
         ]
 
         #current offset
@@ -417,27 +418,44 @@ class Level(BaseWindow):
                 y_pos = row_num *tile_size
                 if element == "1":
                     self.world_walls.append(Wall(x_pos,y_pos,tile_size))
-
-                    # print(time()-start,"wall added to the list")
-                if element == "3":
-                    self.world_turrets.append(Turret(x_pos,y_pos,"simple_turret",tile_size,50))
-                if element =="2":
-                    self.offset_x = x_pos*tile_size-self.surface_width/2
-                    self.offset_y = y_pos*tile_size-self.surface_height/2
-                if element == "4":
+                if element == "2":
                     self.active_coins.append(Coins(x_pos,y_pos))
                     self.perm_coins.append(Coins(x_pos,y_pos))
-                if element == "5":
-                    self.world_turrets.append(Turret(x_pos,y_pos,tile_size,500,45,self.active_projectiles))
-                if element == "6":
-                    self.world_turrets.append(Multi_Dir_Turret(x_pos,y_pos,tile_size,500,45,self.active_projectiles))
-                if element == "7":
-                    self.active_projectiles.append(Rose_Projectile(pygame.Vector2(x_pos,y_pos),0,10))
-                if element =="8":
+                if element =="3":
                     self.machinery.append(Machinery(x_pos,y_pos))
                     self.max_machinery += 1
                 if element == "9":
                     self.spikes.append(Timed_Spike(x_pos,y_pos,2,2))
+
+                else:
+                    # self, x, y, tile_sizer, ranger, angle, bullet_list, time_contraints, projectile
+                    obstacle = element.split("#")
+                    if len(obstacle) == 2:
+                        new_turret = obstacle[0].split("|")
+                        new_proj = obstacle[1].split("|")
+                        if new_turret[0] == "nt":
+                            turret_type = Turret
+                        if new_turret[0] == "st":
+                            turret_type = Multi_Dir_Turret
+                        turret_range = float(new_turret[1])
+                        turret_angle = float(new_turret[2])
+                        turret_time_const = (float(new_turret[3]),float(new_turret[4]),float(new_turret[5]))
+                        
+                        if new_proj[0] == "np":
+                            projectile_type = Projectile
+                        if new_proj[0] == "sp":
+                            projectile_type = Spiral_Projectile
+                        if new_proj[0] == "rp":
+                            projectile_type = Rose_Projectile
+                        if new_proj[0] == "op":
+                            projectile_type = Oscilating_Projectile
+                        projectile_speed = float(new_proj[1])
+                        projectile_theta_increase = float(new_proj[2])
+
+                        self.world_turrets.append(turret_type(x_pos,y_pos,tile_size,turret_range,turret_angle,
+                        self.active_projectiles,turret_time_const,
+                        (projectile_type,projectile_speed,projectile_theta_increase)))
+                    
                 element_num += 1
             row_num += 1
             
@@ -912,23 +930,40 @@ class Player_interface:
 
 
 class Turret:
-    def __init__(self, x, y, tile_sizer,ranger,angle,bullet_list):
-        self.pos = pygame.Vector2(x,y)
+    def __init__(self, x, y, tile_sizer, ranger, angle, bullet_list, time_contraints, projectile):
+        #position of the turret in the world is stored as a vector
+        self.pos = pygame.Vector2(x, y)
+
+        #basic parametres defining turret's size, shooting range and initial rotation angle
         self.tile_size = tile_sizer
         self.angle = angle
         self.shoot_range = ranger
+
+        #state variable is used to determine whether turret is currently shooting or inactive
         self.state = "INACTIVE"
+
+        #reference to the list where all spawned projectiles will be appended
         self.bullet_list = bullet_list
 
+        #time-control variables used to manage shooting cycles
         self.current_time = 0
+
+        #time_contraints list stores:
         self.theta = 0
-        self.shoot_delay = 0.7
-        self.shoot_num = 5
-        self.round_delay = 3
+        self.shoot_delay = time_contraints[1]
+        self.shoot_num = time_contraints[2]
+        self.round_delay = time_contraints[0]
+
+        #temporary variable used to track when next projectile in the current round should be fired
         self.round_delay_temp = self.round_delay
-        
-        self.barrel_midpoint = pygame.Vector2(0,0)
-        self.rect = pygame.Rect(x, y, tile_size,tile_size)
+
+        #stores the projectile class/type that this turret will instantiate when shooting
+        self.projectile = projectile
+
+        self.barrel_midpoint = pygame.Vector2(0, 0)
+
+        #collision / drawing rectangle of the turret (screen position gets updated using offset)
+        self.rect = pygame.Rect(x, y, tile_size, tile_size)
         
     def compile_turret(self, surface,offset):
         surface.blit(turret_bottom, self.rect)
@@ -954,9 +989,7 @@ class Turret:
         circle_pos = self.pos+pygame.Vector2(tile_size,tile_size)/2-offset
         pos_dif = circle_pos - pygame.Vector2(player_x,player_y)
         pygame.draw.circle(window,(255,0,0),circle_pos,self.shoot_range,20)
-        # pygame.draw.line(window,(200,200,200),pygame.Vector2(player_x,player_y),circle_pos,3)
         if pos_dif.length()<=player_d/2+self.shoot_range:
-            # print("this player is entering the circle")
             if self.state == "INACTIVE":
                 self.current_time = time()-self.round_delay
             self.state = "SHOOTING"
@@ -974,14 +1007,11 @@ class Turret:
                 angle_rad = self.angle*pi/180
                 barrel_offset = pygame.Vector2(self.tile_size/2, 0)
                 self.barrel_midpoint+=barrel_offset.rotate(-self.angle)
-                self.bullet_list.append(Oscilating_Projectile(self.barrel_midpoint,-angle_rad,5))
-                # print("SHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOTTTTTTTTTTTTTTTTTTTTTTTTTTT")
+                self.bullet_list.append(self.projectile[0](self.barrel_midpoint,-angle_rad,self.projectile[1],self.projectile[1]))
                 self.round_delay_temp += self.shoot_delay
         else:
             self.current_time = time()
             self.round_delay_temp = self.round_delay
-        # print("Constant:",self.round_delay)
-        # print("Temp:",self.round_delay_temp)
     def target():
         pass
 class Multi_Dir_Turret(Turret):
@@ -995,16 +1025,12 @@ class Multi_Dir_Turret(Turret):
 
         if time_var<=cycle_time:
             if time_var>self.round_delay_temp:
-                # angle_rad = self.angle*pi/180
-                # barrel_offset = pygame.Vector2(self.tile_size/2, 0)
-                # self.barrel_midpoint+=barrel_offset.rotate(-self.angle)
-                # self.bullet_list.append(Oscilating_Projectile(self.barrel_midpoint,-angle_rad,5))
                 directions = 8
                 for i in range(0,directions):
                     angle_rad = 2*pi/directions*i
                     barrel_offset = pygame.Vector2(self.tile_size/2, 0)*0.8
                     shoot_point = self.barrel_midpoint+barrel_offset.rotate_rad(angle_rad)
-                    self.bullet_list.append(Oscilating_Projectile(shoot_point,angle_rad,5))
+                    self.bullet_list.append(self.projectile[0](shoot_point,angle_rad,self.projectile[1],self.projectile[1]))
                 print("SHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOTTTTTTTTTTTTTTTTTTTTTTTTTTT")
                 self.round_delay_temp += self.shoot_delay
         else:
@@ -1014,12 +1040,12 @@ class Multi_Dir_Turret(Turret):
         # print("Temp:",self.round_delay_temp)
 
 class Projectile:
-    def __init__(self, center_pos, angle, speed):
+    def __init__(self, center_pos, angle, speed,theta_increase):
         self.space_pos = center_pos-pygame.Vector2(0,projectile_size/2)
         self.angle = angle
         self.speed = speed
         self.theta = 0
-        self.theta_increase = 1/10
+        self.theta_increase = 1/theta_increase
         self.rect = pygame.Rect(0, 0, projectile_size, projectile_size)
         self.rect.center = self.space_pos
     def velocity(self):
@@ -1266,10 +1292,12 @@ class SaveButton:
 
 class LevelMenu(BaseWindow):
     def __init__(self):
-        self.pos = pygame.Vector2(50,170)
+        self.pos = pygame.Vector2(150,170)
 
         self.button_width = 400
         self.button_height = self.button_width*0.25
+
+        self.return_button = TranstionButton("Textures/Buttons/return_button.png",pygame.Rect(20,700,120,60),11)
 
         self.offset = 30
         self.level_button_list = []
@@ -1278,19 +1306,26 @@ class LevelMenu(BaseWindow):
             if i < 5:
                 bt_pos = self.pos +pygame.Vector2(0,self.button_height+self.offset)*i
             else:
-                bt_pos = pygame.Vector2(1200,self.pos.y)-pygame.Vector2(self.pos.x,0)-pygame.Vector2(self.button_width,0)+pygame.Vector2(0,self.button_height+self.offset)*(i-5)
+                bt_pos = pygame.Vector2(1200,self.pos.y)-pygame.Vector2(self.pos.x,0)-pygame.Vector2(
+                    self.button_width,0)+pygame.Vector2(0,self.button_height+self.offset)*(i-5)
             self.level_button_list.append(LevelButton(bt_pos,self.button_width,self.button_height,i+1))
     
     def board(self,surface):
         surface.blit(background, (0, 0))
+        title = title_font.render("Levels",True,(255,255,255))
+        surface.blit(title,(600-title.get_width()/2,80))
         for button in self.level_button_list:
             button.draw_button(surface)
+        self.return_button.board(surface)
     
     def event_enter(self,event):
         for button in self.level_button_list:
             result = button.event_enter(event)
             if result:
                 self.transition_to = result
+        return_res = self.return_button.event_enter(event)
+        if return_res:
+            self.transition_to = return_res
 
     def on_enter(self):
         global user_data
@@ -1325,18 +1360,20 @@ class LevelButton:
         coins_txt = self.info_font.render(str(self.coins),True,(85,135,180))
         time_txt = self.info_font.render(str(self.time),True,(85,135,180))
 
-        surface.blit(index_txt,self.coords.topleft+pygame.Vector2(self.width*0.18,self.height*0.6)-pygame.Vector2(index_txt.get_width(),index_txt.get_height())/2)
-        surface.blit(score_txt,self.coords.topleft+pygame.Vector2(self.width*0.75,self.height*0.27)-pygame.Vector2(score_txt.get_width(),score_txt.get_height())/2)
-        surface.blit(coins_txt,self.coords.topleft+pygame.Vector2(self.width*0.75,self.height*0.50)-pygame.Vector2(coins_txt.get_width(),coins_txt.get_height())/2)
-        surface.blit(time_txt,self.coords.topleft+pygame.Vector2(self.width*0.75,self.height*0.72)-pygame.Vector2(time_txt.get_width(),time_txt.get_height())/2)
+        surface.blit(index_txt,self.coords.topleft+pygame.Vector2(self.width*0.18,self.height*0.6)-pygame.Vector2(
+            index_txt.get_width(),index_txt.get_height())/2)
+        surface.blit(score_txt,self.coords.topleft+pygame.Vector2(self.width*0.75,self.height*0.27)-pygame.Vector2(
+            score_txt.get_width(),score_txt.get_height())/2)
+        surface.blit(coins_txt,self.coords.topleft+pygame.Vector2(self.width*0.75,self.height*0.72)-pygame.Vector2(
+            coins_txt.get_width(),coins_txt.get_height())/2)
+        surface.blit(time_txt,self.coords.topleft+pygame.Vector2(self.width*0.75,self.height*0.50)-pygame.Vector2(
+            time_txt.get_width(),time_txt.get_height())/2)
     
     def event_enter(self,event):
         if event.type == pygame.MOUSEBUTTONDOWN and self.coords.collidepoint(pygame.mouse.get_pos()):
-            print(self.index)
             return self.index
         return None
-
-
+    
 #textfield objects are created for username and password input
 password_field = TextArea("Password",pygame.Rect(200,500,800,100),"Password",50)
 username_field = TextArea("Username",pygame.Rect(200,300,800,100),"Username",50)
@@ -1359,7 +1396,8 @@ Leader_Board = LeaderBoard()
 Save_Menu = SaveMenu()
 Level_Menu = LevelMenu()
 
-Window_list = [LogIn_Screen,Level_1,Level_2,Level_3,Level_4,Level_5,Level_6,Level_7,Level_8,Level_9,Level_10,MainMenu_Screen,Level_Menu,Leader_Board,Save_Menu]
+Window_list = [LogIn_Screen,Level_1,Level_2,Level_3,Level_4,Level_5,Level_6,Level_7,Level_8,Level_9,Level_10,
+MainMenu_Screen,Level_Menu,Leader_Board,Save_Menu]
 
 #this variable defines which scene is currently active (0 = LogIn, 1 = MainMenu, 2 = Level_1, etc.)
 current_scene = 0
