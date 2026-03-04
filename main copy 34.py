@@ -204,11 +204,62 @@ class LogInWindow(BaseWindow):
             print("one is active right now")
             self.messages[self.active_message].board(surface)
     
-    def validate(self):
-        print("validate is called")
-        if len(password_field.user_text) <= 3:
-            return False
-        return True
+    def validate_password(self):
+        outcome = True
+        error_colour_1 = (200,0,0)
+        error_colour_2 = (200,0,0)
+        error_colour_3 = (200,0,0)
+
+        if len(password_field.user_text) < 3 or len(password_field.user_text)>18:
+            error_colour_1 = (200,0,0)
+            outcome = False
+        else:
+            error_colour_1 = (0,200,0)
+
+        if " " in password_field.user_text:
+            error_colour_2 = (200,0,0)
+        else:
+            error_colour_2 = (0,200,0)
+
+        
+        for char in password_field.user_text:
+            outcome = False
+            error_colour_3 = (200,0,0)
+            if char.isdigit():
+                error_colour_3 = (0,200,0)
+                outcome = True
+                break
+
+        password_field.error_msgs_colours = (error_colour_1,error_colour_2,error_colour_3)
+        return outcome
+    
+    def validate_username(self):
+        outcome = True
+        error_colour_1 = (200,0,0)
+        error_colour_2 = (200,0,0)
+        error_colour_3 = (200,0,0)
+
+        if len(username_field.user_text) < 3 or len(username_field.user_text)>18:
+            error_colour_1 = (200,0,0)
+            outcome = False
+        else:
+            error_colour_1 = (0,200,0)
+
+        if " " in username_field.user_text:
+            error_colour_2 = (200,0,0)
+        else:
+            error_colour_2 = (0,200,0)
+
+        for char in username_field.user_text:
+            outcome = True
+            error_colour_3 = (0,200,0)
+            if not char.isalnum() and char != "_":
+                error_colour_3 = (200,0,0)
+                outcome = False
+                break
+
+        username_field.error_msgs_colours = (error_colour_1,error_colour_2,error_colour_3)
+        return outcome
     
 
     def event_enter(self, event):
@@ -224,7 +275,7 @@ class LogInWindow(BaseWindow):
             t.event_enter(event)
         if event.type == pygame.KEYDOWN:
             #if return is pressed a series of checks is made before (unifinished)
-            if not self.validate():
+            if not self.validate_password() or not self.validate_username():
                 return
             print(self.error_msg[0])
             if event.key == pygame.K_RETURN:
@@ -257,7 +308,7 @@ class LogInWindow(BaseWindow):
 
 class TextArea:
 
-    def __init__(self,field_type,coords:pygame.Rect,preview="",pixel_offset = 0):
+    def __init__(self,error_msgs,field_type,coords:pygame.Rect,preview="",pixel_offset = 0):
         self.field_type = field_type #helps to determine if text won't be shown to the user
         self.preview = preview #what the user will see before clicking on the field
         self.user_text = ''
@@ -265,7 +316,9 @@ class TextArea:
         self.pixel_offset = pixel_offset
         self.active = False #If the field is selected
         self.highlight_colour = (255,255,255)
-        self.error_msg = "hello"
+        self.error_msgs = error_msgs
+        self.error_msgs_colours = ((0,0,0),(0,0,0),(0,0,0))
+        self.error_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",18)
 
     def board(self,surface):
         surface.blit(pygame.transform.smoothscale(field_pic, (self.coords.width, self.coords.height)), (self.coords.x,self.coords.y))
@@ -290,8 +343,10 @@ class TextArea:
         y_coord = self.coords.y + (self.coords.height - text_surface.get_height())/2
         surface.blit(text_surface, (x_coord,y_coord))
 
-        error_txt = base_font.render(self.error_msg,True,(200,200,200))
-        surface.blit(error_txt,self.coords.bottomleft+pygame.Vector2(0,20))
+        for index in range(0,len(self.error_msgs)):
+            print(len(self.error_msgs))
+            error_txt = self.error_font.render(self.error_msgs[index],True,self.error_msgs_colours[index])
+            surface.blit(error_txt,self.coords.bottomleft+pygame.Vector2(0,20)*(index+1))
 
     def event_enter(self, event):
         if event.type == pygame.KEYDOWN and self.active:
@@ -1197,7 +1252,6 @@ class LeaderBoard(BaseWindow):
         self.line_width = 900
         self.table_pos = pygame.Vector2(600-self.line_width/2,170)
         self.line_height = 30
-        pass
 
     def board(self,surface):
         surface.blit(background, (0, 0))
@@ -1474,8 +1528,11 @@ class LevelButton:
         return None
     
 #textfield objects are created for username and password input
-password_field = TextArea("Password",pygame.Rect(200,500,800,100),"Password",50)
-username_field = TextArea("Username",pygame.Rect(200,300,800,100),"Username",50)
+username_errors = ("4–17 characters","No spaces","Only letters, numbers or _")
+password_errors = ("6–20 characters","No spaces","At least one number")
+
+password_field = TextArea(password_errors,"Password",pygame.Rect(200,500,800,100),"Password",50)
+username_field = TextArea(username_errors,"Username",pygame.Rect(200,300,800,100),"Username",50)
 textfield_list = [password_field,username_field]
 
 

@@ -4,6 +4,7 @@ import os
 import json
 from math import cos,sin,sqrt,pi
 from time import time
+import hashlib
 
 start = time()
 clock = pygame.time.Clock()
@@ -183,7 +184,7 @@ class LogInWindow(BaseWindow):
     def __init__(self):
         self.user_response = None
         #messages that will be displayed in this window are declared here
-        self.messages = {"incorrect_password_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username already exists. Password to this account is incorrect",True,10,45),
+        self.messages = {"incorrect_password_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username already exists. Password to this account is incorrect",False,10,45),
                          "login_proceed_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username already exists. Do you want to proceed with logging in you can access the account now",True,10,45),
                          "non_existant_username_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username doesn't exist. Do you want to create new account?",True,10,45)}
         self.active_message = ""
@@ -191,6 +192,7 @@ class LogInWindow(BaseWindow):
         background = pygame.image.load("Textures/Backgrounds/LogIn.png")
         self.background = pygame.transform.smoothscale(background, (1200, 800))
         self.error_msg = ("Password must be between 4 and 12 symbols","Password must contain a numeric value")
+        self.pending_action = None
     def board(self,surface):
         #default
         surface.blit(self.background, (0, 0))
@@ -201,63 +203,176 @@ class LogInWindow(BaseWindow):
             t.board(window)
             #if there is a message activated by user, it is being displayed
         if self.active_message:
-            print("one is active right now")
             self.messages[self.active_message].board(surface)
     
-    def validate(self):
-        print("validate is called")
-        if len(password_field.user_text) <= 3:
-            return False
-        return True
+    def validate_password(self):
+        outcome = True
+        error_colour_1 = (200,0,0)
+        error_colour_2 = (200,0,0)
+        error_colour_3 = (200,0,0)
+
+        if len(password_field.user_text) < 4 or len(password_field.user_text)>17:
+            error_colour_1 = (200,0,0)
+            outcome = False
+        else:
+            error_colour_1 = (0,200,0)
+
+        if " " in password_field.user_text:
+            error_colour_2 = (200,0,0)
+        else:
+            error_colour_2 = (0,200,0)
+
+        
+        for char in password_field.user_text:
+            outcome = False
+            error_colour_3 = (200,0,0)
+            if char.isdigit():
+                error_colour_3 = (0,200,0)
+                outcome = True
+                break
+
+        password_field.error_msgs_colours = (error_colour_1,error_colour_2,error_colour_3)
+        return outcome
+    
+    def hash_password(self,text):
+        return hashlib.sha256(text.encode()).hexdigest()
+    
+    def validate_username(self):
+        outcome = True
+        error_colour_1 = (200,0,0)
+        error_colour_2 = (200,0,0)
+        error_colour_3 = (200,0,0)
+
+        if len(username_field.user_text) < 6 or len(username_field.user_text)>20:
+            error_colour_1 = (200,0,0)
+            outcome = False
+        else:
+            error_colour_1 = (0,200,0)
+
+        if " " in username_field.user_text:
+            error_colour_2 = (200,0,0)
+        else:
+            error_colour_2 = (0,200,0)
+
+        for char in username_field.user_text:
+            outcome = True
+            error_colour_3 = (0,200,0)
+            if not char.isalnum() and char != "_":
+                error_colour_3 = (200,0,0)
+                outcome = False
+                break
+
+        username_field.error_msgs_colours = (error_colour_1,error_colour_2,error_colour_3)
+        return outcome
     
 
     def event_enter(self, event):
-        #system checks if any buttons in the
+        global current_user, user_data, current_save
+
+        #if there is currently a pop up message active,
+        #the system should ignore everything else and only listen to its buttons
         if self.active_message:
             result = self.messages[self.active_message].event_enter(event)
-            if result in ("yes", "no", "ok"):
-                print("User clicked:"+result+" on"+self.active_message+"")
-                self.active_message = None  
-            return  
-        #events are inputed into the text fields area
+
+            #if user clicked one of the pop up buttons
+            if result == "yes":
+
+                #if user agreed to create a new account
+                if self.pending_action == "create":
+
+                    filename = "game_saves/"+username_field.user_text+".json"
+
+                    #initial structure of newly created account
+                    initial_user_data = {
+                        "Password":self.hash_password(password_field.user_text),
+                        "Username":username_field.user_text,
+                        "Game_Saves":[
+                            {"Score":[0]*10,"Time":[0]*10,"Coins":[0]*10},
+                            {"Score":[0]*10,"Time":[0]*10,"Coins":[0]*10},
+                            {"Score":[0]*10,"Time":[0]*10,"Coins":[0]*10}
+                        ],
+                        "Last_Save":0
+                    }
+
+                    #file is created and data is written into it
+                    with open(filename, "w") as file:
+                        json.dump(initial_user_data,file,indent=4)
+
+                    #global variables are updated to reflect current user
+                    current_user = username_field.user_text
+                    user_data = initial_user_data
+                    current_save = 0
+
+                    #system transfers to main menu
+                    self.transition_to = 11
+
+                #if user confirmed logging into existing account
+                if self.pending_action == "login":
+                    self.transition_to = 11
+
+                #pop up is closed after handling action
+                self.active_message = ""
+                self.pending_action = None
+                return
+
+            #if user declined action, pop up simply closes
+            if result == "no":
+                self.active_message = ""
+                self.pending_action = None
+                return
+
+            #if message was informational (OK button only)
+            if result == "ok":
+                self.active_message = ""
+                return
+
+            return
+
+        #if no pop up is active, system listens for input into text fields
         for t in textfield_list:
             t.event_enter(event)
-        if event.type == pygame.KEYDOWN:
-            #if return is pressed a series of checks is made before (unifinished)
-            if not self.validate():
+
+        #if ENTER key is pressed, login procedure begins
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+
+            #first validation of both fields is performed
+            #if any of them fails, algorithm stops here
+            if not self.validate_password() or not self.validate_username():
+                self.validate_username()
                 return
-            print(self.error_msg[0])
-            if event.key == pygame.K_RETURN:
-                
-                filename = "game_saves/"+username_field.user_text+".json"
-                global current_user,user_data,current_save
-                if not os.path.exists(filename):
-                    self.active_message = "non_existant_username_message"
-                    self.transition_to = 11
-                    
-                    with open(filename, "w") as file:
-                        initial_user_data = {
-                            "Password":password_field.user_text,
-                            "Username":username_field.user_text,
-                            "Game_Saves":[{"Score":[0,0,0,0,0,0,0,0,0,0],"Time":[0,0,0,0,0,0,0,0,0,0],"Coins":[0,0,0,0,0,0,0,0,0,0]},
-                                          {"Score":[0,0,0,0,0,0,0,0,0,0],"Time":[0,0,0,0,0,0,0,0,0,0],"Coins":[0,0,0,0,0,0,0,0,0,0]},
-                                          {"Score":[0,0,0,0,0,0,0,0,0,0],"Time":[0,0,0,0,0,0,0,0,0,0],"Coins":[0,0,0,0,0,0,0,0,0,0]}],
-                            "Last_Save":0
-                        }
-                        json.dump(initial_user_data,file,indent = 4)
-                        current_user = username_field.user_text
-                        file.close()
-                if os.path.exists(filename):
-                    with open(filename, "r") as file:
-                        
-                        user_data = json.load(file)
-                        current_save = user_data["Last_Save"]
-                        current_user = username_field.user_text
-                        self.transition_to = 11
+
+            filename = "game_saves/"+username_field.user_text+".json"
+
+            #if account with such username does not exist,
+            #user is asked whether he wants to create a new one
+            if not os.path.exists(filename):
+                self.active_message = "non_existant_username_message"
+                self.pending_action = "create"
+                return
+
+            #if account exists, its data is loaded
+            with open(filename, "r") as file:
+                loaded_data = json.load(file)
+
+            #if password is incorrect, user is informed
+            if loaded_data["Password"] != self.hash_password(password_field.user_text):
+                print(hash(password_field.user_text))
+                self.active_message = "incorrect_password_message"
+                return
+
+            #if password is correct, account data is stored in global variables
+            user_data = loaded_data
+            current_user = username_field.user_text
+            current_save = user_data["Last_Save"]
+
+            #final confirmation before logging in
+            self.active_message = "login_proceed_message"
+            self.pending_action = "login"
+            return
 
 class TextArea:
 
-    def __init__(self,field_type,coords:pygame.Rect,preview="",pixel_offset = 0):
+    def __init__(self,error_msgs,field_type,coords:pygame.Rect,preview="",pixel_offset = 0):
         self.field_type = field_type #helps to determine if text won't be shown to the user
         self.preview = preview #what the user will see before clicking on the field
         self.user_text = ''
@@ -265,7 +380,9 @@ class TextArea:
         self.pixel_offset = pixel_offset
         self.active = False #If the field is selected
         self.highlight_colour = (255,255,255)
-        self.error_msg = "hello"
+        self.error_msgs = error_msgs
+        self.error_msgs_colours = ((0,0,0),(0,0,0),(0,0,0))
+        self.error_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",18)
 
     def board(self,surface):
         surface.blit(pygame.transform.smoothscale(field_pic, (self.coords.width, self.coords.height)), (self.coords.x,self.coords.y))
@@ -290,8 +407,9 @@ class TextArea:
         y_coord = self.coords.y + (self.coords.height - text_surface.get_height())/2
         surface.blit(text_surface, (x_coord,y_coord))
 
-        error_txt = base_font.render(self.error_msg,True,(200,200,200))
-        surface.blit(error_txt,self.coords.bottomleft+pygame.Vector2(0,20))
+        for index in range(0,len(self.error_msgs)):
+            error_txt = self.error_font.render(self.error_msgs[index],True,self.error_msgs_colours[index])
+            surface.blit(error_txt,self.coords.bottomleft+pygame.Vector2(0,20)*(index+1))
 
     def event_enter(self, event):
         if event.type == pygame.KEYDOWN and self.active:
@@ -490,7 +608,6 @@ class Level(BaseWindow):
                         projectile_theta_increase = float(new_proj[2])
                         projectile_lifetime = float(new_proj[3])
 
-                        print(projectile_theta_increase)
 
                         #new turret is instantiated with:
                         # - its world position
@@ -518,7 +635,6 @@ class Level(BaseWindow):
                         #the obstacle is interpreted as a spike definition
 
                         new_spikes = obstacle[0].split("|")
-                        print(new_spikes)
 
                         #spike type is selected based on its short code
                         if new_spikes[0] == "ns":
@@ -1197,7 +1313,6 @@ class LeaderBoard(BaseWindow):
         self.line_width = 900
         self.table_pos = pygame.Vector2(600-self.line_width/2,170)
         self.line_height = 30
-        pass
 
     def board(self,surface):
         surface.blit(background, (0, 0))
@@ -1474,8 +1589,11 @@ class LevelButton:
         return None
     
 #textfield objects are created for username and password input
-password_field = TextArea("Password",pygame.Rect(200,500,800,100),"Password",50)
-username_field = TextArea("Username",pygame.Rect(200,300,800,100),"Username",50)
+username_errors = ("4–17 characters","No spaces","Only letters, numbers or _")
+password_errors = ("6–20 characters","No spaces","At least one number")
+
+password_field = TextArea(password_errors,"Password",pygame.Rect(200,500,800,100),"Password",50)
+username_field = TextArea(username_errors,"Username",pygame.Rect(200,300,800,100),"Username",50)
 textfield_list = [password_field,username_field]
 
 
