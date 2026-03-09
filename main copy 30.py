@@ -474,8 +474,10 @@ class Level(BaseWindow):
             if proj.check_col(self.player_rect):
                 self.hp_num -=1
                 self.active_projectiles.remove(proj)
+                break
             if proj.lifetime <= 0:
                 self.active_projectiles.remove(proj)
+                break
 
         for cur_coin in self.active_coins:
             offset = pygame.Vector2(self.offset_x,self.offset_y)
@@ -934,8 +936,8 @@ class Turret:
 
         #time_contraints list stores:
         self.theta = 0
-        self.shoot_delay = 0.3
-        self.shoot_num = 5
+        self.shoot_delay = 0.1
+        self.shoot_num = 50
         self.round_delay = 3
 
         #temporary variable used to track when next projectile in the current round should be fired

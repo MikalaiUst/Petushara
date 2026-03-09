@@ -43,9 +43,6 @@ class BaseWindow: # Base class used for all window screens in the program
         pass
     #any kind of events like mouse click or key press will be dealt with in this method
 
-
-
-
     def event_enter(self, event):
         pass
 
@@ -77,7 +74,7 @@ class Message: #Logic for the pop up messages
                 text_message+= word+" "
                 text_width += self.calc_width(" " + word)
             else:
-                text_message+="," +word
+                text_message+="," +word +" "
                 text_width = self.calc_width(word)
                 height += self.font.get_height()+self.padding
 
@@ -149,18 +146,19 @@ class LogInWindow(BaseWindow):
     def __init__(self):
         self.user_response = None
         #messages that will be displayed in this window are declared here
-        self.messages = {"incorrect_password_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username already exists. Password to this account is incorrect",True,10,45),
-                         "login_proceed_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username already exists. Do you want to proceed with logging in you can access the account now",True,10,45),#
+        self.messages = {"incorrect_password_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username already exists. Password to this account is incorrect.",True,10,45),
+                         "login_proceed_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username already exists. Do you want to proceed with logging into your account?",True,10,45),#
                          "non_existant_username_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username doesn't exist. Do you want to create new account?",True,10,45)}
         self.active_message = "login_proceed_message"
         #background is adjusted to this particular window
         background = pygame.image.load("Textures/Backgrounds/LogIn.png")
         self.background = pygame.transform.smoothscale(background, (1200, 800))
+
     def board(self,surface):
-        #default
+        #background and title are drawn
         surface.blit(self.background, (0, 0))
-        title = title_font.render("Log In",True,(255,255,255))
-        surface.blit(title, (450, 60))
+        title = title_font.render("Log In / Signup",True,(255,255,255))
+        surface.blit(title, (600-title.get_width()/2, 60))
         #text_fields from the list are added on the screen
         for t in textfield_list:
             t.board(window)
@@ -168,6 +166,7 @@ class LogInWindow(BaseWindow):
         if self.active_message:
             print("one is active right now")
             self.messages[self.active_message].board(surface)
+
     def event_enter(self, event):
         #system checks if any buttons in the
         if self.active_message:
@@ -189,14 +188,12 @@ class LogInWindow(BaseWindow):
                 filename = "game_saves/"+initial_user_data["Username"]+".json"
                 if not os.path.exists(filename):
                     self.active_message = "non_existant_username_message"
-                    self.transition_to = 1
                     with open(filename, "w") as file:
                         json.dump(initial_user_data,file,indent = 4)
                         file.close()
                 if os.path.exists(filename):
                     with open(filename, "r") as file:
                         user_data = json.load(file)
-                        self.transition_to = 1
 
 class TextArea:
 
@@ -477,7 +474,7 @@ Level_1 = Level("level_1")              #placeholder for the first level of the 
 Window_list = [LogIn_Screen,MainMenu_Screen,Level_1]
 
 #this variable defines which scene is currently active (0 = LogIn, 1 = MainMenu, 2 = Level_1, etc.)
-current_scene = 2
+current_scene = 0
 
 run = True
 while run:

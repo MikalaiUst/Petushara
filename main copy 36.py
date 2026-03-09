@@ -4,6 +4,7 @@ import os
 import json
 from math import cos,sin,sqrt,pi
 from time import time
+import hashlib
 
 start = time()
 clock = pygame.time.Clock()
@@ -12,6 +13,9 @@ tile_size = 100
 projectile_size = 20
 coin_size = 50
 machinery_size = 200
+
+player_speed = 15
+player_size = 100
 
 current_user = ""
 user_data = []
@@ -118,7 +122,7 @@ class Message: #Logic for the pop up messages
                 text_message+= word+" "
                 text_width += self.calc_width(" " + word)
             else:
-                text_message+="," +word
+                text_message+="," + word + " "
                 text_width = self.calc_width(word)
                 height += self.font.get_height()+self.padding
 
@@ -183,13 +187,15 @@ class LogInWindow(BaseWindow):
     def __init__(self):
         self.user_response = None
         #messages that will be displayed in this window are declared here
-        self.messages = {"incorrect_password_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username already exists. Password to this account is incorrect",True,10,45),
+        self.messages = {"incorrect_password_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username already exists. Password to this account is incorrect",False,10,45),
                          "login_proceed_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username already exists. Do you want to proceed with logging in you can access the account now",True,10,45),
                          "non_existant_username_message":Message(pygame.Rect(300,300,800,200),(40,30),"The user with such username doesn't exist. Do you want to create new account?",True,10,45)}
         self.active_message = ""
         #background is adjusted to this particular window
         background = pygame.image.load("Textures/Backgrounds/LogIn.png")
         self.background = pygame.transform.smoothscale(background, (1200, 800))
+        self.error_msg = ("Password must be between 4 and 12 symbols","Password must contain a numeric value")
+        self.pending_action = None
     def board(self,surface):
         #default
         surface.blit(self.background, (0, 0))
@@ -200,52 +206,176 @@ class LogInWindow(BaseWindow):
             t.board(window)
             #if there is a message activated by user, it is being displayed
         if self.active_message:
-            print("one is active right now")
             self.messages[self.active_message].board(surface)
+    
+    def validate_password(self):
+        outcome = True
+        error_colour_1 = (200,0,0)
+        error_colour_2 = (200,0,0)
+        error_colour_3 = (200,0,0)
+
+        if len(password_field.user_text) < 4 or len(password_field.user_text)>17:
+            error_colour_1 = (200,0,0)
+            outcome = False
+        else:
+            error_colour_1 = (0,200,0)
+
+        if " " in password_field.user_text:
+            error_colour_2 = (200,0,0)
+        else:
+            error_colour_2 = (0,200,0)
+
+        
+        for char in password_field.user_text:
+            outcome = False
+            error_colour_3 = (200,0,0)
+            if char.isdigit():
+                error_colour_3 = (0,200,0)
+                outcome = True
+                break
+
+        password_field.error_msgs_colours = (error_colour_1,error_colour_2,error_colour_3)
+        return outcome
+    
+    def hash_password(self,text):
+        return hashlib.sha256(text.encode()).hexdigest()
+    
+    def validate_username(self):
+        outcome = True
+        error_colour_1 = (200,0,0)
+        error_colour_2 = (200,0,0)
+        error_colour_3 = (200,0,0)
+
+        if len(username_field.user_text) < 6 or len(username_field.user_text)>20:
+            error_colour_1 = (200,0,0)
+            outcome = False
+        else:
+            error_colour_1 = (0,200,0)
+
+        if " " in username_field.user_text:
+            error_colour_2 = (200,0,0)
+        else:
+            error_colour_2 = (0,200,0)
+
+        for char in username_field.user_text:
+            outcome = True
+            error_colour_3 = (0,200,0)
+            if not char.isalnum() and char != "_":
+                error_colour_3 = (200,0,0)
+                outcome = False
+                break
+
+        username_field.error_msgs_colours = (error_colour_1,error_colour_2,error_colour_3)
+        return outcome
+    
+
     def event_enter(self, event):
-        #system checks if any buttons in the
+        global current_user, user_data, current_save
+
+        #if there is currently a pop up message active,
+        #the system should ignore everything else and only listen to its buttons
         if self.active_message:
             result = self.messages[self.active_message].event_enter(event)
-            if result in ("yes", "no", "ok"):
-                print("User clicked:"+result+" on"+self.active_message+"")
-                self.active_message = None  
-            return  
-        #events are inputed into the text fields area
+
+            #if user clicked one of the pop up buttons
+            if result == "yes":
+
+                #if user agreed to create a new account
+                if self.pending_action == "create":
+
+                    filename = "game_saves/"+username_field.user_text+".json"
+
+                    #initial structure of newly created account
+                    initial_user_data = {
+                        "Password":self.hash_password(password_field.user_text),
+                        "Username":username_field.user_text,
+                        "Game_Saves":[
+                            {"Score":[0]*10,"Time":[0]*10,"Coins":[0]*10},
+                            {"Score":[0]*10,"Time":[0]*10,"Coins":[0]*10},
+                            {"Score":[0]*10,"Time":[0]*10,"Coins":[0]*10}
+                        ],
+                        "Last_Save":0
+                    }
+
+                    #file is created and data is written into it
+                    with open(filename, "w") as file:
+                        json.dump(initial_user_data,file,indent=4)
+
+                    #global variables are updated to reflect current user
+                    current_user = username_field.user_text
+                    user_data = initial_user_data
+                    current_save = 0
+
+                    #system transfers to main menu
+                    self.transition_to = 11
+
+                #if user confirmed logging into existing account
+                if self.pending_action == "login":
+                    self.transition_to = 11
+
+                #pop up is closed after handling action
+                self.active_message = ""
+                self.pending_action = None
+                return
+
+            #if user declined action, pop up simply closes
+            if result == "no":
+                self.active_message = ""
+                self.pending_action = None
+                return
+
+            #if message was informational (OK button only)
+            if result == "ok":
+                self.active_message = ""
+                return
+
+            return
+
+        #if no pop up is active, system listens for input into text fields
         for t in textfield_list:
             t.event_enter(event)
-        if event.type == pygame.KEYDOWN:
-            #if return is pressed a series of checks is made before (unifinished)
-            if event.key == pygame.K_RETURN:
-                
-                filename = "game_saves/"+username_field.user_text+".json"
-                global current_user,user_data,current_save
-                if not os.path.exists(filename):
-                    self.active_message = "non_existant_username_message"
-                    self.transition_to = 11
-                    
-                    with open(filename, "w") as file:
-                        initial_user_data = {
-                            "Password":password_field.user_text,
-                            "Username":username_field.user_text,
-                            "Game_Saves":[{"Score":[0,0,0,0,0,0,0,0,0,0],"Time":[0,0,0,0,0,0,0,0,0,0],"Coins":[0,0,0,0,0,0,0,0,0,0]},
-                                          {"Score":[0,0,0,0,0,0,0,0,0,0],"Time":[0,0,0,0,0,0,0,0,0,0],"Coins":[0,0,0,0,0,0,0,0,0,0]},
-                                          {"Score":[0,0,0,0,0,0,0,0,0,0],"Time":[0,0,0,0,0,0,0,0,0,0],"Coins":[0,0,0,0,0,0,0,0,0,0]}],
-                            "Last_Save":0
-                        }
-                        json.dump(initial_user_data,file,indent = 4)
-                        current_user = username_field.user_text
-                        file.close()
-                if os.path.exists(filename):
-                    with open(filename, "r") as file:
-                        
-                        user_data = json.load(file)
-                        current_save = user_data["Last_Save"]
-                        current_user = username_field.user_text
-                        self.transition_to = 11
+
+        #if ENTER key is pressed, login procedure begins
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+
+            #first validation of both fields is performed
+            #if any of them fails, algorithm stops here
+            if not self.validate_password() or not self.validate_username():
+                self.validate_username()
+                return
+
+            filename = "game_saves/"+username_field.user_text+".json"
+
+            #if account with such username does not exist,
+            #user is asked whether he wants to create a new one
+            if not os.path.exists(filename):
+                self.active_message = "non_existant_username_message"
+                self.pending_action = "create"
+                return
+
+            #if account exists, its data is loaded
+            with open(filename, "r") as file:
+                loaded_data = json.load(file)
+
+            #if password is incorrect, user is informed
+            if loaded_data["Password"] != self.hash_password(password_field.user_text):
+                print(hash(password_field.user_text))
+                self.active_message = "incorrect_password_message"
+                return
+
+            #if password is correct, account data is stored in global variables
+            user_data = loaded_data
+            current_user = username_field.user_text
+            current_save = user_data["Last_Save"]
+
+            #final confirmation before logging in
+            self.active_message = "login_proceed_message"
+            self.pending_action = "login"
+            return
 
 class TextArea:
 
-    def __init__(self,field_type,coords:pygame.Rect,preview="",pixel_offset = 0):
+    def __init__(self,error_msgs,field_type,coords:pygame.Rect,preview="",pixel_offset = 0):
         self.field_type = field_type #helps to determine if text won't be shown to the user
         self.preview = preview #what the user will see before clicking on the field
         self.user_text = ''
@@ -253,9 +383,9 @@ class TextArea:
         self.pixel_offset = pixel_offset
         self.active = False #If the field is selected
         self.highlight_colour = (255,255,255)
-
-
-
+        self.error_msgs = error_msgs
+        self.error_msgs_colours = ((0,0,0),(0,0,0),(0,0,0))
+        self.error_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",18)
 
     def board(self,surface):
         surface.blit(pygame.transform.smoothscale(field_pic, (self.coords.width, self.coords.height)), (self.coords.x,self.coords.y))
@@ -280,6 +410,9 @@ class TextArea:
         y_coord = self.coords.y + (self.coords.height - text_surface.get_height())/2
         surface.blit(text_surface, (x_coord,y_coord))
 
+        for index in range(0,len(self.error_msgs)):
+            error_txt = self.error_font.render(self.error_msgs[index],True,self.error_msgs_colours[index])
+            surface.blit(error_txt,self.coords.bottomleft+pygame.Vector2(0,20)*(index+1))
 
     def event_enter(self, event):
         if event.type == pygame.KEYDOWN and self.active:
@@ -337,8 +470,8 @@ class Level(BaseWindow):
         # file = open("levels/" + level_name + ".txt", "r")
 
         #player variables
-        self.player_param = 150
-        self.player_speed = 15
+        self.player_param = player_size
+        self.player_speed = player_speed
         self.direction = "left"
         self.sprite_dir = "right"
         self.character_img = pygame.image.load("Textures/user_icons/hero.png")
@@ -416,7 +549,7 @@ class Level(BaseWindow):
             for element in line.strip().split(","):
                 x_pos = element_num *tile_size
                 y_pos = row_num *tile_size
-                if element == "0" or element == "9" or element == "8" or element == "6" or element == "5" or element == "4":
+                if element == "0" or element == "8" or element == "5" or element == "4":
                     pass
                 elif element == "1":
                     self.world_walls.append(Wall(x_pos,y_pos,tile_size))
@@ -426,20 +559,23 @@ class Level(BaseWindow):
                 elif element =="3":
                     self.machinery.append(Machinery(x_pos,y_pos))
                     self.max_machinery += 1
-                else:
-                    #if the element is not a simple predefined tile,
-                    #it is treated as a custom encoded obstacle
+                elif element == "9":
+                    self.spikes.append(Timed_Spike(x_pos,y_pos,2,2))
 
-                    #self, x, y, tile_sizer, ranger, angle, bullet_list, time_contraints, projectile
+                else:
+                    #if the element is not a simple predefined object,
+                    #it is treated as a complex object description encoded as text
+
                     obstacle = element.split("#")
 
-                    #if the encoded object contains two sections,
-                    #it means it describes a turret and its projectile
+                    #if there are two parts separated by "#",
+                    #it means that this is a turret with a projectile definition
                     if len(obstacle) == 2:
-                        #first section stores turret data
+                    
+                        #first part defines turret parametres
                         new_turret = obstacle[0].split("|")
 
-                        #second section stores projectile data
+                        #second part defines projectile parametres
                         new_proj = obstacle[1].split("|")
 
                         #turret type is determined by its short code
@@ -448,11 +584,18 @@ class Level(BaseWindow):
                         if new_turret[0] == "st":
                             turret_type = Multi_Dir_Turret
 
-                        #numeric turret parametres are extracted from the encoded string
+                        #numeric turret parametres are extracted and converted to float
                         turret_range = float(new_turret[1])
                         turret_angle = float(new_turret[2])
-                        turret_time_const = (float(new_turret[3]),float(new_turret[4]),float(new_turret[5]))
-                        
+
+                        #time constraints are grouped into a tuple:
+                        #(delay between shots, number of shots per round, delay between rounds)
+                        turret_time_const = (
+                            float(new_turret[3]),
+                            float(new_turret[4]),
+                            float(new_turret[5])
+                        )
+
                         #projectile type is determined by its short code
                         if new_proj[0] == "np":
                             projectile_type = Projectile
@@ -463,38 +606,58 @@ class Level(BaseWindow):
                         if new_proj[0] == "op":
                             projectile_type = Oscilating_Projectile
 
-                        #projectile movement and lifetime values are extracted
+                        #projectile movement and lifetime parametres are extracted
                         projectile_speed = float(new_proj[1])
                         projectile_theta_increase = float(new_proj[2])
                         projectile_lifetime = float(new_proj[3])
 
-                        #new turret object is created and appended to the turret list,
-                        #along with the tuple describing what projectile it should shoot
-                        self.world_turrets.append(turret_type(x_pos,y_pos,tile_size,turret_range,turret_angle,
-                        self.active_projectiles,turret_time_const,
-                        (projectile_type,projectile_speed,projectile_theta_increase,projectile_lifetime)))
 
-                    if len(obstacle) == 1:
-                        #if the encoded obstacle contains only one section,
-                        #it means the object describes a spike
+                        #new turret is instantiated with:
+                        # - its world position
+                        # - shooting behaviour
+                        # - reference to global projectile list
+                        # - tuple describing what projectile it should create
+                        self.world_turrets.append(
+                            turret_type(
+                                x_pos,
+                                y_pos,
+                                tile_size,
+                                turret_range,
+                                turret_angle,
+                                self.active_projectiles,
+                                turret_time_const,
+                                (projectile_type,
+                                 projectile_speed,
+                                 projectile_theta_increase,
+                                 projectile_lifetime)
+                            )
+                        )
 
-                        #spike data is extracted from the encoded string
+                    else:
+                        #if there is no projectile section,
+                        #the obstacle is interpreted as a spike definition
+
                         new_spikes = obstacle[0].split("|")
-
                         print(new_spikes)
-
-                        #spike type is determined by its short code
+                        #spike type is selected based on its short code
                         if new_spikes[0] == "ns":
                             spike_type = Spike
                         if new_spikes[0] == "ts":
                             spike_type = Timed_Spike
 
-                        #spike timing parametres are extracted
+                        #time parametres for spike behaviour are extracted
                         spike_reset_time = float(new_spikes[1])
                         spike_active_time = float(new_spikes[2])
 
-                        #new spike object is instantiated and appended to the spike list
-                        self.spikes.append(spike_type(x_pos,y_pos,spike_reset_time,spike_active_time))
+                        #new spike object is appended to the spike list
+                        self.spikes.append(
+                            spike_type(
+                                x_pos,
+                                y_pos,
+                                spike_reset_time,
+                                spike_active_time
+                            )
+                        )
                     
                 element_num += 1
             row_num += 1
@@ -526,17 +689,17 @@ class Level(BaseWindow):
         for proj in self.active_projectiles:
             proj.rect.topleft = proj.space_pos - pygame.Vector2(self.offset_x,self.offset_y)
             surface.blit(projectile, proj.rect)
+            #update and move the projectile if level is active
             if self.active == True:
                 proj.space_pos += proj.velocity()
                 proj.update()
+            #remove if projectile hits the player
             if proj.check_col(self.player_rect):
                 self.hp_num -=1
                 self.active_projectiles.remove(proj)
-                break
             #remove if lifetime expired
             if proj.lifetime <= 0:
                 self.active_projectiles.remove(proj)
-                break
 
         for cur_coin in self.active_coins:
             offset = pygame.Vector2(self.offset_x,self.offset_y)
@@ -977,9 +1140,6 @@ class Turret:
         self.angle = angle
         self.shoot_range = ranger
 
-        #stores the projectile class/type that this turret will instantiate when shooting
-        self.projectile = projectile
-
         #state variable is used to determine whether turret is currently shooting or inactive
         self.state = "INACTIVE"
 
@@ -998,7 +1158,8 @@ class Turret:
         #temporary variable used to track when next projectile in the current round should be fired
         self.round_delay_temp = self.round_delay
 
-        
+        #stores the projectile class/type that this turret will instantiate when shooting
+        self.projectile = projectile
 
         self.barrel_midpoint = pygame.Vector2(0, 0)
 
@@ -1039,31 +1200,19 @@ class Turret:
             self.round_delay_temp=self.round_delay
             return False
     def shoot(self):
-        # total cycle time is calculated
         cycle_time = self.round_delay+self.shoot_delay*self.shoot_num
-        # current time difference is obtained
         self.current_time+=clock.get_time()/1000
-        # checks if the total time went past
+
         if self.current_time<=cycle_time:
-            # checks if the round delay went past
             if self.current_time>self.round_delay_temp:
-                # angle is calculated in radians
                 angle_rad = self.angle*pi/180
-                # barrel offset is calculated so the projectile emerges from the end of the turret
                 barrel_offset = pygame.Vector2(self.tile_size/2, 0)
-                # shooting point is rotated according to the turret angle
                 self.barrel_midpoint+=barrel_offset.rotate(-self.angle)
-                # new bullet is added to the list
-                self.bullet_list.append(self.projectile[0](self.barrel_midpoint,-angle_rad,self.projectile[1],
-                                                           self.projectile[2],self.projectile[3]))
-                # round delay is increased by the shoot delay
+                self.bullet_list.append(self.projectile[0](self.barrel_midpoint,-angle_rad,self.projectile[1],self.projectile[2],self.projectile[3]))
                 self.round_delay_temp += self.shoot_delay
         else:
-            # when system completes one cycle, time is reset
             self.current_time = 0
             self.round_delay_temp = self.round_delay
-    def target():
-        pass
 class Multi_Dir_Turret(Turret):
     def compile_turret(self, surface,offset):
         surface.blit(multi_dir_turret, self.rect)
@@ -1071,10 +1220,10 @@ class Multi_Dir_Turret(Turret):
         
     def shoot(self):
         cycle_time = self.round_delay+self.shoot_delay*self.shoot_num
-        time_var=time()-self.current_time
+        self.current_time += clock.get_time()/1000
 
-        if time_var<=cycle_time:
-            if time_var>self.round_delay_temp:
+        if self.current_time<=cycle_time:
+            if self.current_time>self.round_delay_temp:
                 directions = 8
                 for i in range(0,directions):
                     angle_rad = 2*pi/directions*i
@@ -1084,29 +1233,44 @@ class Multi_Dir_Turret(Turret):
                 print("SHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOTTTTTTTTTTTTTTTTTTTTTTTTTTT")
                 self.round_delay_temp += self.shoot_delay
         else:
-            self.current_time = time()
+            self.current_time = 0
             self.round_delay_temp = self.round_delay
         # print("Constant:",self.round_delay)
         # print("Temp:",self.round_delay_temp)
 
 class Projectile:
-    def __init__(self, center_pos, angle, speed,theta_increase,lifetime):
-        self.space_pos = center_pos-pygame.Vector2(0,projectile_size/2)
+    def __init__(self, center_pos, angle, speed, theta_increase, lifetime):
+        #small vertical offset is applied so that projectile appears correctly centred
+        self.space_pos = center_pos - pygame.Vector2(0, projectile_size/2)
+
+        #direction and movement parametres
         self.angle = angle
         self.speed = speed
+
+        #lifetime determines how long the projectile will exist
         self.lifetime = lifetime
+
+        #theta variables are used for special projectile movement patterns
         self.theta = 0
         self.theta_increase = 1/theta_increase
+
+        #rectangle used for drawing and collision detection
         self.rect = pygame.Rect(0, 0, projectile_size, projectile_size)
         self.rect.center = self.space_pos
+
+    def update(self):
+        #once it reaches zero projectile should be removed from the level
+        self.lifetime -= clock.get_time()/1000
+
     def velocity(self):
+        #basic movement model:
+        #projectile moves along the x-axis and is rotated by its angle
         x = self.speed
         y = 0
-        return pygame.Vector2(x,y).rotate_rad(self.angle)
-    def update(self):
-        #decrease lifetime every frame
-        self.lifetime -= clock.get_time()/1000
-    def check_col(self,player_rect):
+        return pygame.Vector2(x, y).rotate_rad(self.angle)
+
+    def check_col(self, player_rect):
+        #checks if projectile collides with the player's rectangle
         return self.rect.colliderect(player_rect)
         
 class Oscilating_Projectile(Projectile):
@@ -1152,7 +1316,6 @@ class LeaderBoard(BaseWindow):
         self.line_width = 900
         self.table_pos = pygame.Vector2(600-self.line_width/2,170)
         self.line_height = 30
-        pass
 
     def board(self,surface):
         surface.blit(background, (0, 0))
@@ -1429,8 +1592,11 @@ class LevelButton:
         return None
     
 #textfield objects are created for username and password input
-password_field = TextArea("Password",pygame.Rect(200,500,800,100),"Password",50)
-username_field = TextArea("Username",pygame.Rect(200,300,800,100),"Username",50)
+username_errors = ("4–17 characters","No spaces","Only letters, numbers or _")
+password_errors = ("6–20 characters","No spaces","At least one number")
+
+password_field = TextArea(password_errors,"Password",pygame.Rect(200,500,800,100),"Password",50)
+username_field = TextArea(username_errors,"Username",pygame.Rect(200,300,800,100),"Username",50)
 textfield_list = [password_field,username_field]
 
 

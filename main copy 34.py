@@ -205,62 +205,86 @@ class LogInWindow(BaseWindow):
             self.messages[self.active_message].board(surface)
     
     def validate_password(self):
+        #variable that stores the overall validation result
         outcome = True
+
+        #default colours for the requirement messages (red = requirement not satisfied)
         error_colour_1 = (200,0,0)
         error_colour_2 = (200,0,0)
         error_colour_3 = (200,0,0)
 
-        if len(password_field.user_text) < 3 or len(password_field.user_text)>18:
+        #checks if password length is within the allowed range
+        if len(password_field.user_text) < 6 or len(password_field.user_text)>20:
             error_colour_1 = (200,0,0)
             outcome = False
         else:
+            #if requirement is satisfied the message colour becomes green
             error_colour_1 = (0,200,0)
 
+        #checks whether the password contains spaces
         if " " in password_field.user_text:
             error_colour_2 = (200,0,0)
         else:
             error_colour_2 = (0,200,0)
 
-        
+        #algorithm loops through all characters in the password
+        #to determine if at least one numeric character exists
         for char in password_field.user_text:
             outcome = False
             error_colour_3 = (200,0,0)
             if char.isdigit():
+                #if a numeric value is found the requirement is satisfied
                 error_colour_3 = (0,200,0)
                 outcome = True
                 break
 
+        #tuple of colours is assigned to the text field
+        #these colours are later used when rendering validation messages
         password_field.error_msgs_colours = (error_colour_1,error_colour_2,error_colour_3)
-        return outcome
-    
+
+        #method returns the overall validation outcome
+        return not (error_colour_3 ==(200,0,0) or error_colour_2 ==(200,0,0) or error_colour_1 ==(200,0,0))
+
+
     def validate_username(self):
+        #variable storing whether the username passed validation
         outcome = True
+
+        #default colours for requirement messages (red = not satisfied)
         error_colour_1 = (200,0,0)
         error_colour_2 = (200,0,0)
         error_colour_3 = (200,0,0)
 
-        if len(username_field.user_text) < 3 or len(username_field.user_text)>18:
+        #checks if username length is within allowed limits
+        if len(username_field.user_text) < 4 or len(username_field.user_text)>16:
             error_colour_1 = (200,0,0)
             outcome = False
         else:
             error_colour_1 = (0,200,0)
 
+        #checks whether the username contains spaces
         if " " in username_field.user_text:
             error_colour_2 = (200,0,0)
         else:
             error_colour_2 = (0,200,0)
 
+        #algorithm checks each character of the username
+        #to ensure only allowed symbols are used
         for char in username_field.user_text:
             outcome = True
             error_colour_3 = (0,200,0)
+            #characters must be letters, numbers or underscore
             if not char.isalnum() and char != "_":
                 error_colour_3 = (200,0,0)
                 outcome = False
                 break
 
+        #validation colours are passed to the text field
+        #so the requirement messages can be displayed correctly
         username_field.error_msgs_colours = (error_colour_1,error_colour_2,error_colour_3)
-        return outcome
-    
+
+        #method returns whether the username is valid
+        return not (error_colour_3 ==(200,0,0) or error_colour_2 ==(200,0,0) or error_colour_1 ==(200,0,0))
 
     def event_enter(self, event):
         #system checks if any buttons in the
@@ -273,18 +297,20 @@ class LogInWindow(BaseWindow):
         #events are inputed into the text fields area
         for t in textfield_list:
             t.event_enter(event)
+        #if return is pressed a series of checks is made before
         if event.type == pygame.KEYDOWN:
-            #if return is pressed a series of checks is made before (unifinished)
+            #validation of the fields
             if not self.validate_password() or not self.validate_username():
+                #validate_username() called to update the colour of the requirements regardless
+                self.validate_username()
+                #if information inside the fields is incorrect algorithm stops
                 return
-            print(self.error_msg[0])
             if event.key == pygame.K_RETURN:
                 
                 filename = "game_saves/"+username_field.user_text+".json"
                 global current_user,user_data,current_save
                 if not os.path.exists(filename):
                     self.active_message = "non_existant_username_message"
-                    self.transition_to = 11
                     
                     with open(filename, "w") as file:
                         initial_user_data = {
@@ -304,8 +330,6 @@ class LogInWindow(BaseWindow):
                         user_data = json.load(file)
                         current_save = user_data["Last_Save"]
                         current_user = username_field.user_text
-                        self.transition_to = 11
-
 class TextArea:
 
     def __init__(self,error_msgs,field_type,coords:pygame.Rect,preview="",pixel_offset = 0):
@@ -316,8 +340,11 @@ class TextArea:
         self.pixel_offset = pixel_offset
         self.active = False #If the field is selected
         self.highlight_colour = (255,255,255)
+        #stores all the error messages
         self.error_msgs = error_msgs
-        self.error_msgs_colours = ((0,0,0),(0,0,0),(0,0,0))
+        #stores the colours for the error messages
+        self.error_msgs_colours = ((255,255,255),(255,255,255),(255,255,255))
+        #font for the error messages
         self.error_font = pygame.font.Font("Textures/Fonts/PressStart2P-Regular.ttf",18)
 
     def board(self,surface):
@@ -343,9 +370,12 @@ class TextArea:
         y_coord = self.coords.y + (self.coords.height - text_surface.get_height())/2
         surface.blit(text_surface, (x_coord,y_coord))
 
+        #loop that outputs validation messages under the text field
         for index in range(0,len(self.error_msgs)):
             print(len(self.error_msgs))
+            #each error message is rendered using its corresponding colour
             error_txt = self.error_font.render(self.error_msgs[index],True,self.error_msgs_colours[index])
+            #messages are displayed one under another with a vertical offset
             surface.blit(error_txt,self.coords.bottomleft+pygame.Vector2(0,20)*(index+1))
 
     def event_enter(self, event):
