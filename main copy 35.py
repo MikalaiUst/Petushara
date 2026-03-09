@@ -278,7 +278,7 @@ class LogInWindow(BaseWindow):
 
                     #initial structure of newly created account
                     initial_user_data = {
-                        "Password":self.hash_password(password_field.user_text),
+                        "Password":hash(password_field.user_text),
                         "Username":username_field.user_text,
                         "Game_Saves":[
                             {"Score":[0,0,0,0,0,0,0,0,0,0],"Time":[0,0,0,0,0,0,0,0,0,0],"Coins":[0,0,0,0,0,0,0,0,0,0]},
@@ -298,11 +298,12 @@ class LogInWindow(BaseWindow):
                     current_save = 0
 
                     #system transfers to main menu
-                    self.transition_to = 11
+                    self.transition_to = 1
 
                 #if user confirmed logging into existing account
                 if self.pending_action == "login":
-                    self.transition_to = 11
+                    #system transfers to main menu
+                    self.transition_to = 1
 
                 #pop up is closed after handling action
                 self.active_message = ""
@@ -349,8 +350,7 @@ class LogInWindow(BaseWindow):
                     loaded_data = json.load(file)
 
                 #if password is incorrect, user is informed
-                if loaded_data["Password"] != self.hash_password(password_field.user_text):
-                    print(hash(password_field.user_text))
+                if loaded_data["Password"] != hash(password_field.user_text):
                     self.active_message = "incorrect_password_message"
                     return
 
