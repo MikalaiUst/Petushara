@@ -952,9 +952,7 @@ class Turret:
         circle_pos = self.pos+pygame.Vector2(tile_size,tile_size)/2-offset
         pos_dif = circle_pos - pygame.Vector2(player_x,player_y)
         pygame.draw.circle(window,(255,0,0),circle_pos,self.shoot_range,20)
-        # pygame.draw.line(window,(200,200,200),pygame.Vector2(player_x,player_y),circle_pos,3)
         if pos_dif.length()<=player_d/2+self.shoot_range:
-            # print("this player is entering the circle")
             if self.state == "INACTIVE":
                 self.current_time = time()-self.round_delay
             self.state = "SHOOTING"

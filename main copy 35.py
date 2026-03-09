@@ -14,6 +14,9 @@ projectile_size = 20
 coin_size = 50
 machinery_size = 200
 
+player_speed = 15
+player_size = 100
+
 current_user = ""
 user_data = []
 current_save = 0
@@ -467,8 +470,8 @@ class Level(BaseWindow):
         # file = open("levels/" + level_name + ".txt", "r")
 
         #player variables
-        self.player_param = 150
-        self.player_speed = 15
+        self.player_param = player_size
+        self.player_speed = player_speed
         self.direction = "left"
         self.sprite_dir = "right"
         self.character_img = pygame.image.load("Textures/user_icons/hero.png")
@@ -1217,10 +1220,10 @@ class Multi_Dir_Turret(Turret):
         
     def shoot(self):
         cycle_time = self.round_delay+self.shoot_delay*self.shoot_num
-        time_var=time()-self.current_time
+        self.current_time += clock.get_time()/1000
 
-        if time_var<=cycle_time:
-            if time_var>self.round_delay_temp:
+        if self.current_time<=cycle_time:
+            if self.current_time>self.round_delay_temp:
                 directions = 8
                 for i in range(0,directions):
                     angle_rad = 2*pi/directions*i
@@ -1230,7 +1233,7 @@ class Multi_Dir_Turret(Turret):
                 print("SHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOTTTTTTTTTTTTTTTTTTTTTTTTTTT")
                 self.round_delay_temp += self.shoot_delay
         else:
-            self.current_time = time()
+            self.current_time = 0
             self.round_delay_temp = self.round_delay
         # print("Constant:",self.round_delay)
         # print("Temp:",self.round_delay_temp)

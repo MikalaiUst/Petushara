@@ -428,19 +428,33 @@ class Level(BaseWindow):
                     self.spikes.append(Timed_Spike(x_pos,y_pos,2,2))
 
                 else:
-                    # self, x, y, tile_sizer, ranger, angle, bullet_list, time_contraints, projectile
+                    #if the element is not a simple predefined tile,
+                    #it is treated as a custom encoded obstacle
+
+                    #self, x, y, tile_sizer, ranger, angle, bullet_list, time_contraints, projectile
                     obstacle = element.split("#")
+
+                    #if the encoded object contains two sections,
+                    #it means it describes a turret and its projectile
                     if len(obstacle) == 2:
+                        #first section stores turret data
                         new_turret = obstacle[0].split("|")
+
+                        #second section stores projectile data
                         new_proj = obstacle[1].split("|")
+
+                        #turret type is determined by its short code
                         if new_turret[0] == "nt":
                             turret_type = Turret
                         if new_turret[0] == "st":
                             turret_type = Multi_Dir_Turret
+
+                        #numeric turret parametres are extracted from the encoded string
                         turret_range = float(new_turret[1])
                         turret_angle = float(new_turret[2])
                         turret_time_const = (float(new_turret[3]),float(new_turret[4]),float(new_turret[5]))
                         
+                        #projectile type is determined by its short code
                         if new_proj[0] == "np":
                             projectile_type = Projectile
                         if new_proj[0] == "sp":
@@ -449,23 +463,27 @@ class Level(BaseWindow):
                             projectile_type = Rose_Projectile
                         if new_proj[0] == "op":
                             projectile_type = Oscilating_Projectile
+
+                        #projectile movement and lifetime values are extracted
                         projectile_speed = float(new_proj[1])
                         projectile_theta_increase = float(new_proj[2])
                         projectile_lifetime = float(new_proj[3])
-                        print(projectile_theta_increase)
 
+                        #new turret object is created and appended to the turret list,
+                        #along with the tuple describing what projectile it should shoot
                         self.world_turrets.append(turret_type(x_pos,y_pos,tile_size,turret_range,turret_angle,
                         self.active_projectiles,turret_time_const,
                         (projectile_type,projectile_speed,projectile_theta_increase,projectile_lifetime)))
-                    else:
+
+                    if len(obstacle) == 1:
                         new_spikes = obstacle[0].split("|")
                         if new_spikes[0] == "ns":
-                            spike_type = Spikes
+                            spike_type = Spike
                         if new_spikes[0] == "ts":
-                            spikes_type = Timed_Spikes
+                            spike_type = Timed_Spike
                         spike_reset_time = float(new_spikes[1])
                         spike_active_time = float(new_spikes[2])
-                        self.spikes.append(spyketype(x_pos,y_pos,spike_reset_time,spike_active_time))
+                        self.spikes.append(spike_type(x_pos,y_pos,spike_reset_time,spike_active_time))
                     
                 element_num += 1
             row_num += 1
@@ -946,6 +964,9 @@ class Turret:
         self.angle = angle
         self.shoot_range = ranger
 
+        #stores the projectile class/type that this turret will instantiate when shooting
+        self.projectile = projectile
+
         #state variable is used to determine whether turret is currently shooting or inactive
         self.state = "INACTIVE"
 
@@ -964,8 +985,7 @@ class Turret:
         #temporary variable used to track when next projectile in the current round should be fired
         self.round_delay_temp = self.round_delay
 
-        #stores the projectile class/type that this turret will instantiate when shooting
-        self.projectile = projectile
+        
 
         self.barrel_midpoint = pygame.Vector2(0, 0)
 
@@ -998,7 +1018,7 @@ class Turret:
         pygame.draw.circle(window,(255,0,0),circle_pos,self.shoot_range,20)
         if pos_dif.length()<=player_d/2+self.shoot_range:
             if self.state == "INACTIVE":
-                self.current_time = time()-self.round_delay
+                self.current_time = self.round_delay
             self.state = "SHOOTING"
             return True
         else:
@@ -1006,18 +1026,28 @@ class Turret:
             self.round_delay_temp=self.round_delay
             return False
     def shoot(self):
+        # total cycle time is calculated
         cycle_time = self.round_delay+self.shoot_delay*self.shoot_num
-        time_var=time()-self.current_time
-
-        if time_var<=cycle_time:
-            if time_var>self.round_delay_temp:
+        # current time difference is obtained
+        self.current_time+=clock.get_time()/1000
+        # checks if the total time went past
+        if self.current_time<=cycle_time:
+            # checks if the round delay went past
+            if self.current_time>self.round_delay_temp:
+                # angle is calculated in radians
                 angle_rad = self.angle*pi/180
+                # barrel offset is calculated so the projectile emerges from the end of the turret
                 barrel_offset = pygame.Vector2(self.tile_size/2, 0)
+                # shooting point is rotated according to the turret angle
                 self.barrel_midpoint+=barrel_offset.rotate(-self.angle)
-                self.bullet_list.append(self.projectile[0](self.barrel_midpoint,-angle_rad,self.projectile[1],self.projectile[2],self.projectile[3]))
+                # new bullet is added to the list
+                self.bullet_list.append(self.projectile[0](self.barrel_midpoint,-angle_rad,self.projectile[1],
+                                                           self.projectile[2],self.projectile[3]))
+                # round delay is increased by the shoot delay
                 self.round_delay_temp += self.shoot_delay
         else:
-            self.current_time = time()
+            # when system completes one cycle, time is reset
+            self.current_time = 0
             self.round_delay_temp = self.round_delay
     def target():
         pass

@@ -930,7 +930,7 @@ class Player_interface:
 
 
 class Turret:
-    def __init__(self, x, y, tile_sizer, ranger, angle, bullet_list, time_contraints, projectile):
+    def __init__(self, x, y, tile_sizer, ranger, angle, bullet_list):
         #position of the turret in the world is stored as a vector
         self.pos = pygame.Vector2(x, y)
 
@@ -950,9 +950,9 @@ class Turret:
 
         #time_contraints list stores:
         self.theta = 0
-        self.shoot_delay = time_contraints[1]
-        self.shoot_num = time_contraints[2]
-        self.round_delay = time_contraints[0]
+        self.shoot_delay = 0.1
+        self.shoot_num = 7
+        self.round_delay = 3
 
         #temporary variable used to track when next projectile in the current round should be fired
         self.round_delay_temp = self.round_delay
