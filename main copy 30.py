@@ -432,12 +432,14 @@ class Level(BaseWindow):
                 if element == "6":
                     self.world_turrets.append(Multi_Dir_Turret(x_pos,y_pos,tile_size,500,45,self.active_projectiles))
                 if element == "7":
-                    self.active_projectiles.append(Rose_Projectile(pygame.Vector2(x_pos,y_pos),0,10))
+                    # self.active_projectiles.append(Rose_Projectile(pygame.Vector2(x_pos,y_pos),0,10))
+                    continue
                 if element =="8":
-                    self.machinery.append(Machinery(x_pos,y_pos))
+                    # self.machinery.append(Machinery(x_pos,y_pos))
                     self.max_machinery += 1
                 if element == "9":
-                    self.spikes.append(Timed_Spike(x_pos,y_pos,2,2))
+                    # self.spikes.append(Timed_Spike(x_pos,y_pos,2,2))
+                    pass
                 element_num += 1
             row_num += 1
             
@@ -526,7 +528,7 @@ class Level(BaseWindow):
         self.score = self.def_score + self.coin_num*self.coin_reward - (5-self.hp_num)*self.hp_penalty - time_penalty
         self.score = self.score - self.score%5
 
-        self.player_interface.draw_interface(surface,self.hp_num,self.coin_num,int(self.score),self.machinery_num,self.max_machinery,self.cur_time,self.time_limit)
+        # self.player_interface.draw_interface(surface,self.hp_num,self.coin_num,int(self.score),self.machinery_num,self.max_machinery,self.cur_time,self.time_limit)
 
         #Checks if the player had lost all of his health points
         if self.hp_num < 1:
@@ -991,11 +993,11 @@ class Turret:
         # total cycle time is calculated
         cycle_time = self.round_delay+self.shoot_delay*self.shoot_num
         # current time difference is obtained
-        self.current_time+=clock.get_time()/1000
+        time_var=time()-self.current_time
         # checks if the total time went past
-        if self.current_time<=cycle_time:
+        if time_var<=cycle_time:
             # checks if the round delay went past
-            if self.current_time>self.round_delay_temp:
+            if time_var>self.round_delay_temp:
                 # angle is calculated in radians
                 angle_rad = self.angle*pi/180
                 # barrel offset is calculated so the projectile emerges from the end of the turret
@@ -1008,7 +1010,7 @@ class Turret:
                 self.round_delay_temp += self.shoot_delay
         else:
             # when system completes one cycle, time is reset
-            self.current_time = 0
+            self.current_time = time()
             self.round_delay_temp = self.round_delay
 
 
@@ -1018,29 +1020,40 @@ class Multi_Dir_Turret(Turret):
         self.barrel_midpoint=self.rect.center+offset
         
     def shoot(self):
+        # total cycle time is calculated
         cycle_time = self.round_delay+self.shoot_delay*self.shoot_num
+        # current time difference is obtained
         time_var=time()-self.current_time
 
+        # checks if the total time went past
         if time_var<=cycle_time:
+            # checks if the round delay went past
             if time_var>self.round_delay_temp:
-                # angle_rad = self.angle*pi/180
-                # barrel_offset = pygame.Vector2(self.tile_size/2, 0)
-                # self.barrel_midpoint+=barrel_offset.rotate(-self.angle)
-                # self.bullet_list.append(Oscilating_Projectile(self.barrel_midpoint,-angle_rad,5))
+
+                # number of directions in which the turret will shoot
                 directions = 8
+
+                # loop that creates multiple projectiles in different directions
                 for i in range(0,directions):
+
+                    # angle for each projectile is calculated in radians
                     angle_rad = 2*pi/directions*i
+
+                    # barrel offset is calculated so the projectile emerges from the edge of the turret
                     barrel_offset = pygame.Vector2(self.tile_size/2, 0)*0.8
+
+                    # shooting point is rotated according to the calculated angle
                     shoot_point = self.barrel_midpoint+barrel_offset.rotate_rad(angle_rad)
-                    self.bullet_list.append(Oscilating_Projectile(shoot_point,angle_rad,5))
-                print("SHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOTTTTTTTTTTTTTTTTTTTTTTTTTTT")
+
+                    # new bullet is added to the list
+                    self.bullet_list.append(Oscilating_Projectile(shoot_point,angle_rad,5,5))
+
+                # round delay is increased by the shoot delay
                 self.round_delay_temp += self.shoot_delay
         else:
+            # when system completes one cycle, time is reset
             self.current_time = time()
             self.round_delay_temp = self.round_delay
-        # print("Constant:",self.round_delay)
-        # print("Temp:",self.round_delay_temp)
-
 class Projectile:
     def __init__(self, center_pos, angle, speed,lifetime):
         self.space_pos = center_pos-pygame.Vector2(0,projectile_size/2)

@@ -1012,8 +1012,7 @@ class Turret:
         else:
             self.current_time = time()
             self.round_delay_temp = self.round_delay
-    def target():
-        pass
+            
 class Multi_Dir_Turret(Turret):
     def compile_turret(self, surface,offset):
         surface.blit(multi_dir_turret, self.rect)

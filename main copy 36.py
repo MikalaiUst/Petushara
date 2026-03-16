@@ -343,6 +343,7 @@ class LogInWindow(BaseWindow):
             if not self.validate_password() or not self.validate_username():
                 self.validate_username()
                 return
+            print(hash(password_field.user_text))
 
             filename = "game_saves/"+username_field.user_text+".json"
 
@@ -429,23 +430,11 @@ class TextArea:
 
 class MainMenuWindow(BaseWindow):
     def __init__(self):
-        #buttons are declared and stored in a list
-        self.button_list = [
-            TranstionButton("Textures/Buttons/levels.png",pygame.Rect(400,225,400,150),12),
-            TranstionButton("Textures/Buttons/leaderboard.png",pygame.Rect(400,425,400,150),13),
-            TranstionButton("Textures/Buttons/save_files.png",pygame.Rect(400,600,400,150),14)
-        ]
+        pass
     def board(self,surface):
         surface.blit(background, (0, 0))
-        #each button from the list is drawn on the screen
-        for button in self.button_list:
-            button.board(surface)
     def event_enter(self, event):
-        #checks if any of the buttons has been pressed by the user
-        for button in self.button_list:
-            result = button.event_enter(event)
-            if result:
-                self.transition_to = result
+        pass
 
 class TranstionButton:
     def __init__(self,button_pic_name,coords:pygame.Rect, target):
