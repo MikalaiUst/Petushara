@@ -325,7 +325,7 @@ class LogInWindow(BaseWindow):
                 self.pending_action = None
                 return
 
-            #if message was informational (OK button only)
+            #if message was informational
             if result == "ok":
                 self.active_message = ""
                 return
@@ -339,7 +339,6 @@ class LogInWindow(BaseWindow):
         #if ENTER key is pressed, login procedure begins
         if event.type == pygame.KEYDOWN:
 
-            #first validation of both fields is performed
             #if any of them fails, algorithm stops here
             if not self.validate_password() or not self.validate_username():
                 self.validate_username()
@@ -436,7 +435,10 @@ class MainMenuWindow(BaseWindow):
             TranstionButton("Textures/Buttons/save_files.png",pygame.Rect(400,600,400,150),14)
         ]
     def board(self,surface):
+        
         surface.blit(background, (0, 0))
+        title = title_font.render("Space Invaders!",True,(255,255,255))
+        surface.blit(title, (600-title.get_width()/2, 75))
         #each button from the list is drawn on the screen
         for button in self.button_list:
             button.board(surface)
@@ -956,13 +958,14 @@ class Spike:
         self.sprite = retracted_spikes
         self.active_time = active_time
         self.ready = False
+        self.damage = 1
         self.activated = True
     def hit(self,player_rect):
         if self.ready and self.tile_rect.colliderect(player_rect):
             self.cur_time = 0
             self.sprite = retracted_spikes
             self.ready = False
-            return 1
+            return self.damage
         else:
             return 0
 
@@ -985,7 +988,7 @@ class Timed_Spike(Spike):
             self.cur_time = 0
             self.ready = False
             self.sprite = retracted_spikes
-            return 4
+            return self.damage
         else:
             return 0
     def cooldown(self,surface,offset):
